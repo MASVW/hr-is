@@ -1,0 +1,66 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\Approval;
+use App\Models\Department;
+use App\Models\RecruitmentPhase;
+use App\Models\RecruitmentRequest;
+use App\Models\User;
+// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
+
+class DatabaseSeeder extends Seeder
+{
+    /**
+     * Seed the application's database.
+     */
+    public function run(): void
+    {
+        $this->call([
+            DepartmentSeeder::class,
+            RoleSeeder::class,
+        ]);
+
+        $department = Department::first();
+
+        $admin = User::create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Human Resource Management',
+            'email' => 'hr@gmail.com',
+            'password' => Hash::make('password'),
+            'department_id' => $department->id,
+        ]);
+        $admin->assignRole('Super-Admin');
+
+        $roles = Role::pluck('name')->toArray();
+        User::factory(10)->create()->each(function ($user) use ($roles) {
+            $user->assignRole(fake()->randomElement($roles));
+        });
+
+        $approval = Approval::factory()->create();
+
+        for ($i = 0; $i < 1; $i++){
+            $request = RecruitmentRequest::factory()->create([
+                'department_id' => $department->id,
+                'requested_by' => $admin->id,
+                'approval_id' => $approval->id,
+            ]);
+
+            $approval->update([
+                'request_id' => $request->id,
+            ]);
+
+            $phase = RecruitmentPhase::factory()->create([
+                'request_id' => $request->id,
+            ]);
+
+            $request->update([
+                'phase_id' => $phase->id,
+            ]);
+        }
+    }
+}
