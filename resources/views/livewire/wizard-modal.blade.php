@@ -1,31 +1,55 @@
-<div class="w-full px-4 py-2">
-    <ol class="flex items-center w-full">
-        <!-- Step 1: Done -->
-        <li class="flex items-center w-full text-blue-600 dark:text-blue-500 after:content-[''] after:w-full after:h-1 after:border-b after:border-blue-200 after:border-2 after:inline-block dark:after:border-blue-800">
-            <span class="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-full lg:h-12 lg:w-12 dark:bg-blue-800 shrink-0">
-                <!-- Check SVG -->
-                <svg class="w-5 h-5 text-blue-600 dark:text-blue-300" fill="none" viewBox="0 0 16 12">
-                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5.917 5.724 10.5 15 1.5"/>
-                </svg>
-            </span>
-        </li>
-        <!-- Step 2: In Progress -->
-        <li class="flex items-center w-full after:content-[''] after:w-full after:h-1 after:border-b after:border-gray-200 after:border-2 after:inline-block dark:after:border-gray-700">
-            <span class="flex items-center justify-center w-10 h-10 bg-gray-100 rounded-full lg:h-12 lg:w-12 dark:bg-gray-700 shrink-0">
-                <!-- User SVG -->
-                <svg class="w-5 h-5 text-gray-500 dark:text-gray-100" fill="currentColor" viewBox="0 0 20 16">
-                    <path d="M18 0H2a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2ZM6.5 3a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5ZM3.014 13.021l.157-.625A3.427 3.427 0 0 1 6.5 9.571a3.426 3.426 0 0 1 3.322 2.805l.159.622-6.967.023ZM16 12h-3a1 1 0 0 1 0-2h3a1 1 0 0 1 0 2Zm0-3h-3a1 1 0 1 1 0-2h3a1 1 0 1 1 0 2Zm0-3h-3a1 1 0 1 1 0-2h3a1 1 0 1 1 0 2Z"/>
-                </svg>
-            </span>
-        </li>
-        <!-- Step 3: Waiting -->
-        <li class="flex items-center w-full">
-            <span class="flex items-center justify-center w-10 h-10 bg-gray-100 rounded-full lg:h-12 lg:w-12 dark:bg-gray-700 shrink-0">
-                <!-- Book SVG -->
-                <svg class="w-5 h-5 text-gray-500 dark:text-gray-100" fill="currentColor" viewBox="0 0 18 20">
-                    <path d="M16 1h-3.278A1.992 1.992 0 0 0 11 0H7a1.993 1.993 0 0 0-1.722 1H2a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2ZM7 2h4v3H7V2Zm5.7 8.289-3.975 3.857a1 1 0 0 1-1.393 0L5.3 12.182a1.002 1.002 0 1 1 1.4-1.436l1.328 1.289 3.28-3.181a1 1 0 1 1 1.392 1.435Z"/>
-                </svg>
-            </span>
-        </li>
-    </ol>
+<div x-data="{ step: 0 }" class="space-y-6">
+    <!-- Wrapper Stepper -->
+    <div class="flex items-center justify-between w-full overflow-x-auto pb-2">
+        @foreach($record->form_data['phases'] as $i => $phase)
+            <div class="flex items-center flex-1 min-w-[120px]">
+
+                <!-- Step -->
+                <div
+                    class="relative flex flex-col items-center cursor-pointer z-10"
+                    @click.stop="step = {{ $i }}"
+                >
+                    <div
+                        class="w-10 h-10 flex items-center justify-center rounded-full border-2 transition-all"
+                        :class="step >= {{ $i }}
+                            ? 'bg-blue-500 text-white border-blue-500'
+                            : 'bg-gray-200 text-gray-500 border-gray-300'"
+                    >
+                        <template x-if="step > {{ $i }}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </template>
+                        <template x-if="step <= {{ $i }}">
+                            <span>{{ $i + 1 }}</span>
+                        </template>
+                    </div>
+                    <span
+                        class="mt-2 text-xs text-center"
+                        :class="step === {{ $i }} ? 'text-blue-600 font-semibold' : 'text-gray-500'"
+                    >
+                        {{ $phase['name'] }}
+                    </span>
+                </div>
+
+                <!-- Garis -->
+                @if($i < count($record->form_data['phases']) - 1)
+                    <div class="flex-1 h-1 mx-2 rounded-full"
+                         :class="step > {{ $i }} ? 'bg-blue-400' : 'bg-gray-300'">
+                    </div>
+                @endif
+            </div>
+        @endforeach
+    </div>
+
+    <!-- Konten -->
+    <div class="border rounded-lg p-4 bg-gray-50">
+        <template x-for="(phase, index) in {{ json_encode($record->form_data['phases']) }}" :key="index">
+            <div x-show="step === index" class="space-y-1">
+                <p><strong>Nama:</strong> <span x-text="phase.name"></span></p>
+                <p><strong>Status:</strong> <span x-text="phase.status"></span></p>
+                <p><strong>Updated:</strong> <span x-text="phase.updatedAt ?? '-'"></span></p>
+            </div>
+        </template>
+    </div>
 </div>

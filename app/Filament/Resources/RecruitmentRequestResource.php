@@ -50,7 +50,7 @@ class RecruitmentRequestResource extends Resource
                             ->modal()
                             ->modalSubmitAction(false)
                             ->modalCancelActionLabel('Tutup')
-                            ->modalContent(fn($record) => view('livewire.wizard-modal', ['record' => $record]))
+                            ->modalContent(fn($record) => view('livewire.wizard-modal', ['record' => $record->recruitmentPhase]))
                     ),
                 Tables\Columns\IconColumn::make('status')
                     ->label('Progress')
