@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Admin\Resources\RoleResource\Pages;
 use App\Filament\Admin\Resources\RoleResource\RelationManagers;
 use App\Models\Role;
+use Filament\Actions\DeleteAction;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -19,6 +20,7 @@ class RoleResource extends Resource
     protected static ?string $navigationIcon = 'eos-role-binding-o';
 
     protected static ?string $activeNavigationIcon = 'eos-role-binding';
+    protected static ?int $navigationSort = 6;
 
     public static function form(Form $form): Form
     {
@@ -50,12 +52,10 @@ class RoleResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+                Tables\Actions\EditAction::make()
+                    ->hiddenLabel(),
+                Tables\Actions\DeleteAction::make()
+                    ->hiddenLabel()
             ]);
     }
 

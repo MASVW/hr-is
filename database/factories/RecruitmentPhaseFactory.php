@@ -18,12 +18,13 @@ class RecruitmentPhaseFactory extends Factory
             'request_id' => \App\Models\RecruitmentRequest::factory(),
             'status' => 'progress',
             'started_at' => now()->subDays(7),
-            'finishAt' => null,
+            'finish_at' => null,
             'form_data' => [
                 'phases' => [
                     [
                         'name' => 'Requesting',
                         'status' => 'finish',
+                        'note' => '',
                         'updatedAt' => '2025-07-16T09:00:00Z',
                     ], //0
                     [

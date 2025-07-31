@@ -15,7 +15,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->enum('status', ['progress', 'finish']);
             $table->datetime('started_at')->nullable();
-            $table->datetime('finishAt')->nullable();
+            $table->datetime('finish_at')->nullable();
             $table->json('form_data')->nullable();
             $table->timestamps();
 

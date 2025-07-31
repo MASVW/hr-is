@@ -41,19 +41,21 @@ class DatabaseSeeder extends Seeder
             $user->assignRole(fake()->randomElement($roles));
         });
 
-        $approval = Approval::factory()->create();
 
-        for ($i = 0; $i < 1; $i++){
+        for ($i = 0; $i < 100; $i++){
+            //DONE
+            $approval = Approval::factory()->create();
+            //DONE
             $request = RecruitmentRequest::factory()->create([
                 'department_id' => $department->id,
                 'requested_by' => $admin->id,
                 'approval_id' => $approval->id,
             ]);
-
+            //DONE
             $approval->update([
                 'request_id' => $request->id,
             ]);
-
+            //progress
             $phase = RecruitmentPhase::factory()->create([
                 'request_id' => $request->id,
             ]);

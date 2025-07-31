@@ -23,6 +23,7 @@ class RecruitmentPhaseResource extends Resource
     {
         return false;
     }
+    protected static ?int $navigationSort = 3;
 
     public static function table(Table $table): Table
     {
@@ -65,8 +66,9 @@ class RecruitmentPhaseResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('started_at')
-                    ->dateTime('d F Y h:i A')
+                    ->label('Dibuat Pada')
                     ->since()
+                    ->tooltip(fn($record):string => date_format($record['started_at'], 'd F Y h:i A'))
                     ->alignment(Alignment::Center)
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
@@ -82,7 +84,8 @@ class RecruitmentPhaseResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->hiddenLabel(),
             ]);
     }
     public static function getRelations(): array

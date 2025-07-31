@@ -20,6 +20,7 @@ class PermissionResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-shield-exclamation';
 
     protected static ?string $activeNavigationIcon = 'heroicon-s-shield-exclamation';
+    protected static ?int $navigationSort = 7;
 
     public static function form(Form $form): Form
     {
@@ -52,12 +53,10 @@ class PermissionResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+                Tables\Actions\EditAction::make()
+                    ->hiddenLabel(),
+                Tables\Actions\DeleteAction::make()
+                    ->hiddenLabel()
             ]);
     }
 

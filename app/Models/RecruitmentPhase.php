@@ -26,7 +26,7 @@ class RecruitmentPhase extends Model
         'phase_type',
         'status',
         'started_at',
-        'finishAt',
+        'finish_at',
         'form_data',
     ];
 

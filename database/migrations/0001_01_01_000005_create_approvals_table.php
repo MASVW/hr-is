@@ -14,9 +14,9 @@ return new class extends Migration
         Schema::create('approvals', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->enum('status', ['approved', 'rejected', 'NA']);
-            $table->boolean('hrd_approval')->default(false); //apakah sudah di approve dari sisi hrd
-            $table->boolean('chairman_approval')->default(false); //apakah sudah di approve dari sisi stakeholder/direksi
-            $table->boolean('is_closed')->default(false); //apakah direksi ataupun HR Manager memiliki revisi
+            $table->boolean('hrd_approval')->nullable(); //apakah sudah di approve dari sisi hrd
+            $table->boolean('chairman_approval')->nullable(); //apakah sudah di approve dari sisi stakeholder/direksi
+            $table->boolean('is_closed')->nullable(); //apakah direksi ataupun HR Manager memiliki revisi
             $table->datetime('approved_at')->nullable();
             $table->string('reason')->nullable();
             $table->timestamps();

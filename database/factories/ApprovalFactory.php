@@ -21,8 +21,6 @@ class ApprovalFactory extends Factory
         return [
             'request_id' => null,
             'status' => $this->faker->randomElement(['approved', 'rejected', 'NA']),
-            'hrd_approval' => $this->faker->boolean(),
-            'chairman_approval' => $this->faker->boolean(),
             'is_closed' => $this->faker->boolean(20),
             'approved_at' => $this->faker->optional()->dateTimeBetween('-7 days', 'now'),
             'reason' => $this->faker->optional()->sentence(),
