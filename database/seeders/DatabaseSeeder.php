@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             DepartmentSeeder::class,
             RoleSeeder::class,
+            LocationSeeder::class,
         ]);
 
         $department = Department::first();
