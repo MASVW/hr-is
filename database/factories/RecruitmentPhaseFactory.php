@@ -26,6 +26,7 @@ class RecruitmentPhaseFactory extends Factory
                         'status' => 'finish',
                         'note' => '',
                         'updatedAt' => '2025-07-16T09:00:00Z',
+                        'reviseNotes' => []
                     ], //0
                     [
                         'name' => 'Approval by Stakeholder',
@@ -34,6 +35,7 @@ class RecruitmentPhaseFactory extends Factory
                         'useId' => 1,
                         'updatedAt' => null,
                         'note' => '',
+                        'reviseNotes' => []
                     ], //1
                     [
                         'name' => 'CV Collection',
@@ -41,6 +43,7 @@ class RecruitmentPhaseFactory extends Factory
                         'totalCV' => 0,
                         'updatedAt' => null,
                         'note' => '',
+                        "reviseNotes" => []
                     ], //2
                     [
                         'name' => 'CV Screening',
@@ -48,6 +51,7 @@ class RecruitmentPhaseFactory extends Factory
                         'approvedCV' => 10,
                         'updatedAt' => null,
                         'note' => '',
+                        'reviseNotes' => []
                     ], //3
                     [
                         'name' => 'Check Background (SLIK, Medic CU)',
@@ -57,6 +61,7 @@ class RecruitmentPhaseFactory extends Factory
                         'passed' => 0,
                         'updatedAt' => null,
                         'note' => '',
+                        'reviseNotes' => []
                     ], //4
                     [
                         'name' => 'Psychology Assessment',
@@ -66,6 +71,7 @@ class RecruitmentPhaseFactory extends Factory
                         'passed' => 0,
                         'updatedAt' => null,
                         'note' => '',
+                        'reviseNotes' => []
                     ], //5
                     [
                         'name' => 'HRD Interview',
@@ -75,6 +81,7 @@ class RecruitmentPhaseFactory extends Factory
                         'passed' => 0,
                         'updatedAt' => null,
                         'note' => '',
+                        'reviseNotes' => [],
                     ],
                     [
                         'name' => 'Interview with User',
@@ -84,6 +91,7 @@ class RecruitmentPhaseFactory extends Factory
                         'passed' => 0,
                         'updatedAt' => null,
                         'note' => '',
+                        'reviseNotes' => []
                     ],
                     [
                         'name' => 'Offering',
@@ -93,6 +101,7 @@ class RecruitmentPhaseFactory extends Factory
                         'agreed' => 0,
                         'updatedAt' => null,
                         'note' => '',
+                        'reviseNotes' => []
                     ],
                     [
                         'name' => 'Onboarding',
@@ -107,6 +116,7 @@ class RecruitmentPhaseFactory extends Factory
                         'onboarded' => 0,
                         'updatedAt' => null,
                         'note' => '',
+                        'reviseNotes' => []
                     ],
                     [
                         'name' => 'Closed',
@@ -114,6 +124,7 @@ class RecruitmentPhaseFactory extends Factory
                         'closedReason' => '',
                         'updatedAt' => null,
                         'note' => '',
+                        'reviseNotes' => []
                     ]
                 ]
             ]
