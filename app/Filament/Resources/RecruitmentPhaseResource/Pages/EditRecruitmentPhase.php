@@ -100,11 +100,37 @@ class EditRecruitmentPhase extends EditRecord
                                     })
                                     ->dehydrated(true),
 
-                                Tabs\Tab::make('Psychology Assessment')
+                                Tabs\Tab::make('Check Background')
                                     ->statePath('phases.4')
-                                    ->icon('heroicon-o-clipboard-document-check')
+                                    ->icon('heroicon-o-shield-check')
                                     ->badge(fn ($record) => ucfirst($record->form_data['phases'][4]['status'] ?? ''))
                                     ->badgeColor(fn ($record) => match ($record->form_data['phases'][4]['status'] ?? null) {
+                                        'progress' => 'success',
+                                        'finish' => 'primary',
+                                        default => 'gray'
+                                    })
+                                    ->schema([
+                                        Select::make('status')
+                                            ->reactive()
+                                            ->options($statusOption),
+                                        TextInput::make('candidate')
+                                            ->numeric(),
+                                        TextInput::make('checked')
+                                            ->numeric(),
+                                        TextInput::make('passed')
+                                            ->numeric(),
+                                        Textarea::make('note'),
+                                    ])
+                                    ->disabled(function ($record) {
+                                        return $record->form_data['phases'][4]['status'] !== 'progress';
+                                    })
+                                    ->dehydrated(true),
+
+                                Tabs\Tab::make('Psychology Assessment')
+                                    ->statePath('phases.5')
+                                    ->icon('heroicon-o-clipboard-document-check')
+                                    ->badge(fn ($record) => ucfirst($record->form_data['phases'][5]['status'] ?? ''))
+                                    ->badgeColor(fn ($record) => match ($record->form_data['phases'][5]['status'] ?? null) {
                                         'progress' => 'success',
                                         'finish' => 'primary',
                                         default => 'gray'
@@ -122,14 +148,14 @@ class EditRecruitmentPhase extends EditRecord
                                         Textarea::make('note'),
                                 ])
                                     ->disabled(function ($record, $state) {
-                                        return $record->form_data['phases'][4]['status'] !== 'progress';
+                                        return $record->form_data['phases'][5]['status'] !== 'progress';
                                     })->dehydrated(true),
 
                                 Tabs\Tab::make('HRD Interview')
-                                    ->statePath('phases.5')
+                                    ->statePath('phases.6')
                                     ->icon('heroicon-o-chat-bubble-left-right')
-                                    ->badge(fn ($record) => ucfirst($record->form_data['phases'][5]['status'] ?? ''))
-                                    ->badgeColor(fn ($record) => match ($record->form_data['phases'][5]['status'] ?? null) {
+                                    ->badge(fn ($record) => ucfirst($record->form_data['phases'][6]['status'] ?? ''))
+                                    ->badgeColor(fn ($record) => match ($record->form_data['phases'][6]['status'] ?? null) {
                                         'progress' => 'success',
                                         'finish' => 'primary',
                                         default => 'gray'
@@ -141,32 +167,6 @@ class EditRecruitmentPhase extends EditRecord
                                         TextInput::make('interviewed')
                                             ->numeric(),
                                         TextInput::make('candidate')
-                                            ->numeric(),
-                                        TextInput::make('passed')
-                                            ->numeric(),
-                                        Textarea::make('note'),
-                                ])
-                                    ->disabled(function ($record) {
-                                        return $record->form_data['phases'][5]['status'] !== 'progress';
-                                    })
-                                    ->dehydrated(true),
-
-                                Tabs\Tab::make('Check Background')
-                                    ->statePath('phases.6')
-                                    ->icon('heroicon-o-shield-check')
-                                    ->badge(fn ($record) => ucfirst($record->form_data['phases'][6]['status'] ?? ''))
-                                    ->badgeColor(fn ($record) => match ($record->form_data['phases'][6]['status'] ?? null) {
-                                        'progress' => 'success',
-                                        'finish' => 'primary',
-                                        default => 'gray'
-                                    })
-                                    ->schema([
-                                        Select::make('status')
-                                            ->reactive()
-                                            ->options($statusOption),
-                                        TextInput::make('candidate')
-                                            ->numeric(),
-                                        TextInput::make('checked')
                                             ->numeric(),
                                         TextInput::make('passed')
                                             ->numeric(),

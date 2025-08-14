@@ -50,6 +50,15 @@ class RecruitmentPhaseFactory extends Factory
                         'note' => '',
                     ], //3
                     [
+                        'name' => 'Check Background (SLIK, Medic CU)',
+                        'status' => 'pending',
+                        'candidate' => 0,
+                        'checked' => 0,
+                        'passed' => 0,
+                        'updatedAt' => null,
+                        'note' => '',
+                    ], //4
+                    [
                         'name' => 'Psychology Assessment',
                         'status' => 'pending',
                         'candidate' => 0,
@@ -57,21 +66,12 @@ class RecruitmentPhaseFactory extends Factory
                         'passed' => 0,
                         'updatedAt' => null,
                         'note' => '',
-                    ], //4
+                    ], //5
                     [
                         'name' => 'HRD Interview',
                         'status' => 'pending',
                         'interviewed' => 0,
                         'candidate' => 0,
-                        'passed' => 0,
-                        'updatedAt' => null,
-                        'note' => '',
-                    ],
-                    [
-                        'name' => 'Check Background (SLIK, Medic CU)',
-                        'status' => 'pending',
-                        'candidate' => 0,
-                        'checked' => 0,
                         'passed' => 0,
                         'updatedAt' => null,
                         'note' => '',
