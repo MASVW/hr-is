@@ -21,6 +21,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     use HasFactory;
     use HasRoles;
     use HasUuids;
+    use Notifiable;
 
     protected $keyType = 'string';
     public $incrementing = false;

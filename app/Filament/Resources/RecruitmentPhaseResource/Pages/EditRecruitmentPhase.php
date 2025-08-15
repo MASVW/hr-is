@@ -445,15 +445,13 @@ class EditRecruitmentPhase extends EditRecord
         if ($this->pendingIndex === null || $this->pendingNewStatus === null) return;
 
         $idx    = $this->pendingIndex;
-        $reason = trim((string) ($get("form_data.phases.$idx.reviseNotes") ?? '')); // ← pakai 'reviseNotes'
+        $reason = trim((string) ($get("form_data.phases.$idx.reviseNotes") ?? ''));
 
         if ($reason === '') return;
 
-        // bersihkan flag agar tidak loop
         $this->pendingIndex = null;
         $this->pendingNewStatus = null;
 
-        // terapkan perubahan
         $this->onPhaseStatusChange($idx, $this->pendingNewStatus, $get, $set);
     }
 
@@ -489,13 +487,11 @@ class EditRecruitmentPhase extends EditRecord
             // bersihkan input sementara di UI
             $set("form_data.phases.$index.reviseNotes", null);
         } else {
-            // Tidak perlu revise
             $this->editedIndex = null;
             $this->pendingIndex = null;
             $this->pendingNewStatus = null;
         }
 
-        // Terapkan aturan status + sinkron ke form
         $phases = $this->applyRules($dbPhases, $index, $newStatus);
         $phases = $this->sanitizePhases($phases);
 
@@ -551,22 +547,17 @@ class EditRecruitmentPhase extends EditRecord
             return $phases;
         }
 
-        // === NEW: pending rule ===
         if ($newStatus === 'pending') {
-            // Set semua jadi pending dulu
             for ($i = 0; $i < $total; $i++) {
                 $phases[$i]['status'] = 'pending';
             }
 
-            // Fase sebelum index jadi progress (atau 0 jika index=0)
             $prev = max(0, $index - 1);
 
-            // Semua sebelum 'prev' = finish
             for ($i = 0; $i < $prev; $i++) {
                 $phases[$i]['status'] = 'finish';
             }
 
-            // 'prev' = progress, index..akhir tetap pending
             $phases[$prev]['status'] = 'progress';
 
             return $phases;
@@ -584,7 +575,6 @@ class EditRecruitmentPhase extends EditRecord
         $record->form_data = $data;
         $record->save();
 
-        // penting: segarkan record & isi ulang form
         $this->getRecord()->refresh();
         $this->fillForm();
 
@@ -596,13 +586,11 @@ class EditRecruitmentPhase extends EditRecord
 
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
-        // pastikan $record terbaru (auto-save sebelumnya tidak ditimpa)
         $record->refresh();
 
         $db    = $record->form_data ?? [];
         $input = $data['form_data'] ?? [];
 
-        // Fallback: kalau user tekan Submit dan ada perubahan tertunda
         if ($this->pendingIndex !== null && $this->pendingNewStatus !== null) {
             $idx    = $this->pendingIndex;
             $reason = trim((string) ($input['phases'][$idx]['reviseNotes'] ?? '')); // ← baca dari payload
@@ -611,7 +599,6 @@ class EditRecruitmentPhase extends EditRecord
                 $db['phases'] = $this->appendReviseLog($db['phases'], $idx, $reason);
                 $db['phases'] = $this->applyRules($db['phases'], $idx, $this->pendingNewStatus);
 
-                // clear flag
                 $this->pendingIndex = null;
                 $this->pendingNewStatus = null;
                 $this->editedIndex = null;
@@ -629,7 +616,6 @@ class EditRecruitmentPhase extends EditRecord
                 }
 
                 foreach ($phaseInput as $k => $v) {
-                    // ⬇️ JANGAN biarkan string 'reviseNotes' overwrite array di DB
                     if (in_array($k, ['status', 'reviseNotes'], true)) continue;
                     $db['phases'][$i][$k] = $v;
                 }
@@ -647,7 +633,6 @@ class EditRecruitmentPhase extends EditRecord
 
         return $record;
     }
-
 
     protected function afterSave(): void
     {
