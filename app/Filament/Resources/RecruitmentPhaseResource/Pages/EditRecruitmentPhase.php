@@ -3,6 +3,9 @@
 namespace App\Filament\Resources\RecruitmentPhaseResource\Pages;
 
 use App\Filament\Resources\RecruitmentPhaseResource;
+use App\Models\User;
+use App\Notifications\RecruitmentActivityNotification;
+use App\Support\Notify;
 use Filament\Actions;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Section;
@@ -15,7 +18,8 @@ use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
-use Filament\Notifications\Notification;
+use Filament\Notifications\Notification as FNotification;
+use Illuminate\Support\Facades\DB;
 
 
 class EditRecruitmentPhase extends EditRecord
@@ -24,6 +28,7 @@ class EditRecruitmentPhase extends EditRecord
     public ?int $pendingIndex = null;
     public ?string $pendingNewStatus = null;
     public ?int $editedIndex = 0;
+
     public function form(Form $form): Form
     {
         $statusOption = [
@@ -455,26 +460,33 @@ class EditRecruitmentPhase extends EditRecord
         $this->onPhaseStatusChange($idx, $this->pendingNewStatus, $get, $set);
     }
 
-
     protected function onPhaseStatusChange(int $index, string $newStatus, Get $get, Set $set): void
     {
-        $record   = $this->getRecord();
+        $record = $this->getRecord()->refresh();
+
         $dbPhases = $record->form_data['phases'] ?? [];
-        if (empty($dbPhases) || !isset($dbPhases[$index])) return;
+        if (! array_key_exists($index, $dbPhases)) {
+            FNotification::make()
+                ->title('Phase tidak ditemukan')
+                ->danger()
+                ->send();
+            return;
+        }
 
         $oldStatus = $dbPhases[$index]['status'] ?? null;
-        $requires  = $this->requiresReviseNotes($oldStatus, $newStatus);
+        $phaseName = $dbPhases[$index]['name'] ?? ('Phase #'.($index + 1));
 
-        if ($requires) {
+        // Wajib alasan saat turun status (mis. Finished -> Pending/On Progress)
+        if ($this->requiresReviseNotes($oldStatus, $newStatus)) {
             $this->editedIndex = $index;
 
             $reason = trim((string) ($get("form_data.phases.$index.reviseNotes") ?? ''));
             if ($reason === '') {
-                // tandai pending dan minta alasan
+                // simpan niat perubahan, minta alasan dulu
                 $this->pendingIndex = $index;
                 $this->pendingNewStatus = $newStatus;
 
-                Notification::make()
+                FNotification::make()
                     ->title('Mohon isi alasan revisi')
                     ->body('Perubahan dari Finished ke Pending/On Progress wajib menyertakan "Revise Notes".')
                     ->warning()
@@ -483,8 +495,8 @@ class EditRecruitmentPhase extends EditRecord
                 return;
             }
 
+            // catat log revisi & bersihkan input sementara
             $dbPhases = $this->appendReviseLog($dbPhases, $index, $reason);
-            // bersihkan input sementara di UI
             $set("form_data.phases.$index.reviseNotes", null);
         } else {
             $this->editedIndex = null;
@@ -492,16 +504,58 @@ class EditRecruitmentPhase extends EditRecord
             $this->pendingNewStatus = null;
         }
 
+        // Terapkan aturan status + sanitasi
         $phases = $this->applyRules($dbPhases, $index, $newStatus);
         $phases = $this->sanitizePhases($phases);
 
+        // Sinkronkan ke UI
         foreach ($phases as $i => $p) {
             if (array_key_exists('status', $p)) {
                 $set("form_data.phases.$i.status", $p['status']);
             }
         }
 
-        $this->savePhases($phases);
+        // Persist lalu kirim notifikasi setelah commit
+        $changed = $oldStatus !== $newStatus;
+
+        DB::transaction(function () use ($phases) {
+            // Simpan ke DB (implementasi kamu)
+            $this->savePhases($phases);
+        });
+
+        // Refresh record untuk memastikan data mutakhir
+        $record->refresh();
+
+        if ($changed) {
+            // 1) Toast lokal (hanya operator)
+            FNotification::make()
+                ->title('Status phase diperbarui')
+                ->body("{$record->title} · {$phaseName}: {$oldStatus} → {$newStatus}")
+                ->success()
+                ->send();
+
+            // 2) Kirim bel + toast realtime ke penerima lain (HR, stakeholder)
+            $actor = auth()->user();
+
+            $recipients = User::role(['HUMAN RESOURCE'])
+                ->when($actor, fn ($q) => $q->whereKeyNot($actor->getKey())) // opsional: exclude pelaksana
+                ->get();
+
+            Notify::recruitmentActivity(
+                recipients:    $recipients,
+                recruitmentId: (string) $record->getKey(),
+                action:        'status_changed',
+                context:       [
+                    'from'  => $oldStatus,
+                    'to'    => $newStatus,
+                    'title' => $record->title,
+                    'phase' => $phaseName,
+                    'index' => $index,
+                ],
+                actorId:       (string) ($actor->id ?? 'system'),
+                actorName:     $actor->name ?? 'System',
+            );
+        }
     }
 
     protected function sanitizePhases(array $phases): array
@@ -566,22 +620,40 @@ class EditRecruitmentPhase extends EditRecord
         return $phases;
     }
 
-    protected function savePhases(array $phases): void
+    protected function savePhases(array $phases, bool $showToast = false): bool
     {
-        $record = $this->getRecord();
+        $record = $this->getRecord()->refresh();
 
-        $data = $record->form_data ?? [];
-        $data['phases'] = $this->sanitizePhases($phases);
-        $record->form_data = $data;
-        $record->save();
+        // Sanitize input baru & existing
+        $newPhases = $this->sanitizePhases($phases);
+        $data      = $record->form_data ?? [];
+        $oldPhases = $this->sanitizePhases($data['phases'] ?? []);
 
-        $this->getRecord()->refresh();
+        // Cegah write kalau tidak ada perubahan
+        if (json_encode($newPhases) === json_encode($oldPhases)) {
+            return false;
+        }
+
+        // Persist atomically
+        DB::transaction(function () use ($record, $data, $newPhases) {
+            $payload = $data;
+            $payload['phases'] = $newPhases;
+
+            $record->forceFill(['form_data' => $payload])->save();
+        });
+
+        // Segarkan state form
+        $record->refresh();
         $this->fillForm();
 
-        Notification::make()
-            ->title('Phase updated')
-            ->success()
-            ->send();
+        if ($showToast) {
+            FNotification::make()
+                ->title('Phase updated')
+                ->success()
+                ->send();
+        }
+
+        return true;
     }
 
     protected function handleRecordUpdate(Model $record, array $data): Model
@@ -636,7 +708,30 @@ class EditRecruitmentPhase extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->getRecord()->refresh();
+        // Ambil record terbaru
+        $record = $this->getRecord()->refresh();
+
+        FNotification::make()
+            ->title('Recruitment updated')
+            ->body("{$record->title} berhasil disimpan.")
+            ->success()
+            ->send();
+
+        $actor = auth()->user();
+
+        $recipients = User::role(['HUMAN RESOURCE'])
+            ->when($actor, fn ($q) => $q->whereKeyNot($actor->getKey()))
+            ->get();
+
+        Notify::recruitmentActivity(
+            recipients:    $recipients,
+            recruitmentId: (string) $record->getKey(),
+            action:        'updated',
+            context:       ['title' => $record->title],
+            actorId:       (string) ($actor->id ?? 'system'),
+            actorName:     $actor->name ?? 'System',
+        );
+
         $this->fillForm();
     }
 

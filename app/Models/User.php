@@ -47,9 +47,9 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         return $this->hasMany(Approval::class, 'approved_by');
     }
 
-    public function notifications(): HasMany
+    public function userNotifications(): HasMany
     {
-        return $this->hasMany(Notification::class);
+        return $this->hasMany(\App\Models\UserNotification::class, 'user_id');
     }
 
     public function canAccessPanel(Panel $panel): bool

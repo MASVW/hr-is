@@ -16,6 +16,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class AdminPanelProvider extends PanelProvider
@@ -58,6 +59,15 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
-            ->databaseNotifications();
+            ->databaseNotifications()
+            ->renderHook('panels::head.start', function () {
+                $id = optional(auth()->user())->getKey();
+                $csrf = csrf_token();
+
+                return ($id ? '<meta name="current-user-id" content="'.e($id).'">' : '')
+                    . '<meta name="csrf-token" content="'.e($csrf).'">';
+            })
+            ->renderHook('panels::head.end', fn () => view('filament.partials.vite-app'))
+            ->renderHook('panels::body.end', fn () => \Livewire\Livewire::mount(\App\Livewire\FilamentEchoBridge::class));
     }
 }
