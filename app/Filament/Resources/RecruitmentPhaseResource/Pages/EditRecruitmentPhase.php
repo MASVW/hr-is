@@ -27,7 +27,7 @@ class EditRecruitmentPhase extends EditRecord
     protected static string $resource = RecruitmentPhaseResource::class;
     public ?int $pendingIndex = null;
     public ?string $pendingNewStatus = null;
-    public ?int $editedIndex = 0;
+    public ?int $editedIndex = null;
 
     public function form(Form $form): Form
     {
@@ -159,7 +159,6 @@ class EditRecruitmentPhase extends EditRecord
                                             ->reactive()
                                             ->options($statusOption)
                                             ->afterStateUpdated(function (string $state, Set $set, Get $get) {
-                                                $this->editedIndex = 4;
                                                 $this->onPhaseStatusChange(4, $state, $get, $set);
                                             }),
                                         TextInput::make('candidate')
@@ -456,6 +455,7 @@ class EditRecruitmentPhase extends EditRecord
 
         $this->pendingIndex = null;
         $this->pendingNewStatus = null;
+        $this->editedIndex = null;
 
         $this->onPhaseStatusChange($idx, $this->pendingNewStatus, $get, $set);
     }
@@ -466,23 +466,18 @@ class EditRecruitmentPhase extends EditRecord
 
         $dbPhases = $record->form_data['phases'] ?? [];
         if (! array_key_exists($index, $dbPhases)) {
-            FNotification::make()
-                ->title('Phase tidak ditemukan')
-                ->danger()
-                ->send();
+            FNotification::make()->title('Phase tidak ditemukan')->danger()->send();
             return;
         }
 
         $oldStatus = $dbPhases[$index]['status'] ?? null;
         $phaseName = $dbPhases[$index]['name'] ?? ('Phase #'.($index + 1));
 
-        // Wajib alasan saat turun status (mis. Finished -> Pending/On Progress)
         if ($this->requiresReviseNotes($oldStatus, $newStatus)) {
             $this->editedIndex = $index;
 
             $reason = trim((string) ($get("form_data.phases.$index.reviseNotes") ?? ''));
             if ($reason === '') {
-                // simpan niat perubahan, minta alasan dulu
                 $this->pendingIndex = $index;
                 $this->pendingNewStatus = $newStatus;
 
@@ -491,13 +486,17 @@ class EditRecruitmentPhase extends EditRecord
                     ->body('Perubahan dari Finished ke Pending/On Progress wajib menyertakan "Revise Notes".')
                     ->warning()
                     ->send();
-
                 return;
             }
 
-            // catat log revisi & bersihkan input sementara
+            // Catat log revisi & bersihkan input sementara
             $dbPhases = $this->appendReviseLog($dbPhases, $index, $reason);
             $set("form_data.phases.$index.reviseNotes", null);
+
+            // CLEAR flags karena alasan sudah dipenuhi
+            $this->editedIndex = null;
+            $this->pendingIndex = null;
+            $this->pendingNewStatus = null;
         } else {
             $this->editedIndex = null;
             $this->pendingIndex = null;
@@ -515,33 +514,29 @@ class EditRecruitmentPhase extends EditRecord
             }
         }
 
-        // Persist lalu kirim notifikasi setelah commit
+        // Simpan (savePhases sudah transactional)
+        $saved   = $this->savePhases($phases);
         $changed = $oldStatus !== $newStatus;
-
-        DB::transaction(function () use ($phases) {
-            // Simpan ke DB (implementasi kamu)
-            $this->savePhases($phases);
-        });
 
         // Refresh record untuk memastikan data mutakhir
         $record->refresh();
 
-        if ($changed) {
-            // 1) Toast lokal (hanya operator)
+        if ($changed && $saved) {
+            // 1) Toast lokal (operator)
             FNotification::make()
                 ->title('Status phase diperbarui')
                 ->body("{$record->title} · {$phaseName}: {$oldStatus} → {$newStatus}")
                 ->success()
                 ->send();
 
-            // 2) Kirim bel + toast realtime ke penerima lain (HR, stakeholder)
+            // 2) Kirim bel + toast realtime ke penerima (HR Manager)
             $actor = auth()->user();
 
-            $recipients = User::role(['HUMAN RESOURCE'])
+            $recipients = \App\Models\User::role(['HR Manager'])
                 ->when($actor, fn ($q) => $q->whereKeyNot($actor->getKey())) // opsional: exclude pelaksana
                 ->get();
 
-            Notify::recruitmentActivity(
+            \App\Support\Notify::recruitmentActivity(
                 recipients:    $recipients,
                 recruitmentId: (string) $record->getKey(),
                 action:        'status_changed',
@@ -557,6 +552,7 @@ class EditRecruitmentPhase extends EditRecord
             );
         }
     }
+
 
     protected function sanitizePhases(array $phases): array
     {
@@ -719,7 +715,7 @@ class EditRecruitmentPhase extends EditRecord
 
         $actor = auth()->user();
 
-        $recipients = User::role(['HUMAN RESOURCE'])
+        $recipients = User::role(['HR Manager'])
             ->when($actor, fn ($q) => $q->whereKeyNot($actor->getKey()))
             ->get();
 
@@ -737,8 +733,6 @@ class EditRecruitmentPhase extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [
-            Actions\DeleteAction::make(),
-        ];
+        return [];
     }
 }

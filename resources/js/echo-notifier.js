@@ -8,9 +8,11 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    echo.private(`App.Models.User.${userId}`)
+    const channel = `App.Models.User.${userId}`;
+
+    echo.private(channel)
         .notification((notification) => {
             window.dispatchEvent(new CustomEvent('echo:notification', { detail: notification }));
-            console.log('[Echo] notification:', notification);
+            window.Livewire?.dispatch('db-notification-arrived');
         });
 });

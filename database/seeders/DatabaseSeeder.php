@@ -30,17 +30,28 @@ class DatabaseSeeder extends Seeder
 
         $admin = User::create([
             'id' => (string) Str::uuid(),
-            'name' => 'Human Resource Management',
+            'name' => 'Human Resource Manager',
+            'email' => 'hrmanager@gmail.com',
+            'password' => Hash::make('password'),
+            'department_id' => $department->id,
+        ]);
+        $admin->assignRole('HR Manager');
+
+        $admin = User::create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Human Resource Management HR Staff',
             'email' => 'hr@gmail.com',
             'password' => Hash::make('password'),
             'department_id' => $department->id,
         ]);
-        $admin->assignRole('Super-Admin');
+        $admin->assignRole('HR Staff');
 
         $roles = Role::pluck('name')->toArray();
         User::factory(10)->create()->each(function ($user) use ($roles) {
             $user->assignRole(fake()->randomElement($roles));
         });
+
+
 
 
         for ($i = 0; $i < 100; $i++){
