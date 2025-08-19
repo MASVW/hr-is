@@ -15,11 +15,17 @@ class Emailer
     /**
      * Kirim email notifikasi umum.
      */
-    public static function notify(User|array|string $to, string $subject, string $message, ?string $actionText = null, ?string $actionUrl = null): void
+    public static function notify(
+        User|array|string $to,
+        string $subject,
+        string $message,
+        ?string $actionText = null,
+        ?string $actionUrl = null): void
     {
         Mail::to($to)->queue(new NotificationMail(
             subjectLine: $subject,
             greeting: __('emails.greeting', [], 'id'),
+            footer: __('emails.thanks', [], 'id'),
             messageLine: $message,
             actionText: $actionText,
             actionUrl: $actionUrl,
@@ -36,9 +42,9 @@ class Emailer
         string $subject,
         string $message,
         array $context,
-        string $recruitmentId,      // <-- required pindah ke atas
-        string $userId,             // <-- required pindah ke atas
-        ?int $expiresIn = null,     // <-- optional di paling akhir
+        string $recruitmentId,
+        string $userId,
+        ?int $expiresIn = null,
     ): void {
         $approveUrl = self::generateApprovalUrl('approvals.approve', $recruitmentId, $userId, $expiresIn);
         $rejectUrl  = self::generateApprovalUrl('approvals.reject', $recruitmentId, $userId, $expiresIn);

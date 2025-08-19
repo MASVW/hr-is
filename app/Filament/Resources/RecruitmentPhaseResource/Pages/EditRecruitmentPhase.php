@@ -5,6 +5,7 @@ namespace App\Filament\Resources\RecruitmentPhaseResource\Pages;
 use App\Filament\Resources\RecruitmentPhaseResource;
 use App\Models\Department;
 use App\Models\User;
+use App\Support\Emailer;
 use App\Support\Notify;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Section;
@@ -20,6 +21,7 @@ use Illuminate\Database\Eloquent\Model;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class EditRecruitmentPhase extends EditRecord
 {
@@ -605,6 +607,29 @@ class EditRecruitmentPhase extends EditRecord
             ->get();
     }
 
+    protected function getRecipientsEmail($actor): array
+    {
+        return User::where(function ($query) {
+            // Manager dari HR berdasarkan department ID
+            $query->whereHas('roles', function ($q) {
+                $q->whereIn('name', ['Manager', 'Team Leader']);
+            })->where('department_id', $this->hrDepartmentId);
+        })
+            ->orWhere(function ($query) {
+                // Team Leader dari department yang sama
+                $query->whereHas('roles', function ($r) {
+                    $r->where('name', 'Team Leader');
+                })->where('department_id', $this->departmentId);
+            })
+            ->when($actor, function ($q) use ($actor) {
+                $q->where('id', '!=', $actor->getKey());
+            })
+            ->pluck('email')
+            ->unique()
+            ->values()
+            ->toArray();
+    }
+
     protected function sanitizePhases(array $phases): array
     {
         foreach ($phases as &$phase) {
@@ -866,6 +891,49 @@ class EditRecruitmentPhase extends EditRecord
             actorName:     $actor->name ?? 'System',
             department:    $this->department,
         );
+
+
+        $reviseItems = array_values(array_filter(
+            $changesPayload,
+            static fn ($c) => isset($c['field']) && strtolower((string)$c['field']) === 'revisenotes'
+        ));
+
+        $revise = !empty($reviseItems)
+            ? $reviseItems[array_key_last($reviseItems)]
+            : null;
+
+        if ($revise) {
+            $phaseName = $revise['phase'] ?? '-';
+
+            $emails = array_values(array_unique(array_filter(
+                self::getRecipientsEmail($actor),
+                fn ($email) => filter_var($email, FILTER_VALIDATE_EMAIL)
+            )));
+
+            if (!empty($emails)) {
+                $subject = sprintf('Perubahan Tahap Proses Perekrutan – %s', $this->department);
+
+                $message = sprintf(
+                    'Kami informasikan bahwa %s telah melakukan pengunduran tahap ke "%s" pada proses perekrutan di departemen %s.',
+                    $actor->name ?? 'System',
+                    $phaseName,
+                    $this->department
+                );
+
+                foreach ($emails as $recipient) {
+                    try {
+                        Emailer::notify(
+                            to: $recipient,
+                            subject: $subject,
+                            message: $message,
+                        );
+                    } catch (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $e) {
+                        Log::warning("Gagal kirim ke {$recipient}: " . $e->getMessage());
+                        continue;
+                    }
+                }
+            }
+        }
 
         // reset buffer
         $this->accumulatedChanges = [];

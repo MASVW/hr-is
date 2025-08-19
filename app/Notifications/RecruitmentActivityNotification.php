@@ -91,25 +91,50 @@ class RecruitmentActivityNotification extends Notification implements ShouldQueu
                 $this->context['from'] ?? '-',
                 $this->context['to'] ?? '-',
             ),
-            'updated' => sprintf(
-                '%s memperbarui #%s: %s',
-                $this->performedByName,
-                $this->recruitmentId,
-                $this->context['title'] ?? 'Detail diperbarui',
-            ),
             'phase_status_changed' => sprintf(
                 '%s telah memperbarui status tahap perekrutan departemen %s dari %s menjadi %s',
                 $this->performedByName,
                 $this->department,
-                $this->context['from'],
-                $this->context['to'],
+                $this->context['from'] ?? '-',
+                $this->context['to'] ?? '-',
             ),
+            // ⬇️ Tambahan ini
+            'detail_change' => (function () {
+                $ctx = $this->context;
+                if (isset($ctx['field']) || isset($ctx['phase'])) {
+                    $ctx = [$ctx];
+                } else {
+                    $ctx = array_values($ctx ?? []);
+                }
+
+                foreach ($ctx as $c) {
+                    if (($c['field'] ?? null) === 'reviseNotes') {
+                        $phase = $c['phase'] ?? '-';
+                        return sprintf(
+                            '%s melakukan pengunduran ke tahap "%s" pada permintaan perekrutan %s',
+                            $this->performedByName,
+                            $phase,
+                            $this->department ?? '-'
+                        );
+                    }
+                }
+
+                // Fallback ringkas bila tidak ada 'reviseNotes'
+                $first = $ctx[0] ?? [];
+                return sprintf(
+                    '%s memperbarui field "%s" pada tahap %s',
+                    $this->performedByName,
+                    $first['field'] ?? 'field',
+                    $first['phase'] ?? '-'
+                );
+            })(),
             default => sprintf(
                 '%s melakukan %s pada #%s',
-                $this->performedByName, $this->action,
-                $this->recruitmentId),
+                $this->performedByName, $this->action, $this->recruitmentId
+            ),
         };
     }
+
 
     public function toBroadcast($notifiable): BroadcastMessage
     {

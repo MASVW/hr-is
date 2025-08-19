@@ -83,17 +83,39 @@ class Notify
                 $val($ctx['to']   ?? null),
             ),
 
+            // ganti blok 'detail_change' di Notify::buildBody()
             'detail_change' => (static function () use ($by, $ctx, $val, $dept) {
-                // ctx bisa berupa list of changes ATAU assoc tunggal
                 if (empty($ctx)) {
                     return sprintf('%s memperbarui detail (tanpa rincian perubahan).', $by);
                 }
 
-                // Jika assoc tunggal: ubah jadi list 1 elemen
+                // Normalisasi: jika assoc tunggal, bungkus jadi list
                 if (isset($ctx['field']) || isset($ctx['phase'])) {
-                    $ctx = [ $ctx ];
+                    $ctx = [$ctx];
+                } else {
+                    // pastikan numerik
+                    $ctx = array_values($ctx);
                 }
 
+                // 1) Deteksi rollback lewat 'reviseNotes' di mana pun posisinya
+                $revise = null;
+                foreach ($ctx as $c) {
+                    if (($c['field'] ?? null) === 'reviseNotes') {
+                        $revise = $c;
+                        break;
+                    }
+                }
+                if ($revise) {
+                    $phase = $revise['phase'] ?? '-';
+                    return sprintf(
+                        '%s melakukan pengunduran ke tahap "%s" pada permintaan perekrutan %s',
+                        $by,
+                        $phase,
+                        $dept
+                    );
+                }
+
+                // 2) Fallback seperti semula
                 $first = $ctx[0] ?? [];
                 $total = is_countable($ctx) ? max(1, count($ctx)) : 1;
 
@@ -103,15 +125,6 @@ class Notify
                 $to    = $val($first['newValue'] ?? null);
 
                 $suffix = $total > 1 ? sprintf(' (+%d perubahan lainnya)', $total - 1) : '';
-
-                if ($field === "reviseNotes") {
-                    return sprintf(
-                        '%s melakukan pengunduran ke tahap "%s" pada permintaan perekrutan %s',
-                        $by,
-                        $phase,
-                        $dept
-                    );
-                }
 
                 return sprintf(
                     '%s memperbarui field "%s" pada tahap %s dari %s menjadi %s%s.',
