@@ -20,8 +20,7 @@ class DepartmentSeeder extends Seeder
             "FINANCE",
             "ACCOUNTING",
             "AUDIT",
-            "HR Manager",
-            "HR Staff",
+            "HUMAN RESOURCE",
             "PROCUREMENT",
             "AMT",
             "MT"

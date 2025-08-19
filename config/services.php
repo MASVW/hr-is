@@ -31,4 +31,8 @@ return [
         ],
     ],
 
+    'hapi' => [
+        'shared_secret' => env('HAPI_SHARED_SECRET'),
+    ],
+
 ];

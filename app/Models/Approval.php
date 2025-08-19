@@ -17,7 +17,12 @@ class Approval extends Model
     public $incrementing = false;
 
     protected $casts = [
-        'approved_at' => 'datetime'
+        'hrd_approval'       => 'boolean',
+        'chairman_approval'  => 'boolean',
+        'is_closed'          => 'boolean',
+        'approved_at'        => 'datetime',
+        'hrd_decided_at'     => 'datetime',
+        'director_decided_at'=> 'datetime',
     ];
 
     protected $fillable = [

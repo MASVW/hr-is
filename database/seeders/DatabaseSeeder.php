@@ -26,33 +26,68 @@ class DatabaseSeeder extends Seeder
             LocationSeeder::class,
         ]);
 
-        $department = Department::first();
-
+        $department = Department::where('name', 'IT')->first();
+        $departmentHR = Department::where('name', 'HUMAN RESOURCE')->first();
         $admin = User::create([
             'id' => (string) Str::uuid(),
-            'name' => 'Human Resource Manager',
-            'email' => 'hrmanager@gmail.com',
+            'name' => 'Samuel Zakaria',
+            'email' => 'samuelzakaria28@gmail.com',
             'password' => Hash::make('password'),
             'department_id' => $department->id,
         ]);
-        $admin->assignRole('HR Manager');
+        $admin->assignRole('Team Leader');
+        $admin->assignRole('Manager');
+
+        $tes1 = User::create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Tes Team Leader IT 2',
+            'email' => 'tes1@gmail.com',
+            'password' => Hash::make('password'),
+            'department_id' => $department->id,
+        ]);
+
+        $tes1->assignRole('Team Leader');
+
+        $tes2 = User::create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Tes Team Leader HR',
+            'email' => 'tes2@gmail.com',
+            'password' => Hash::make('password'),
+            'department_id' => $departmentHR->id,
+        ]);
+        $tes2->assignRole('Team Leader');
+
+        $tes3 = User::create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Tes Team Leader HR 2',
+            'email' => 'tes3@gmail.com',
+            'password' => Hash::make('password'),
+            'department_id' => $departmentHR->id,
+        ]);
+        $tes3->assignRole('Team Leader');
+
+        $tes4 = User::create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Tes Manager HR 4',
+            'email' => 'tes4@gmail.com',
+            'password' => Hash::make('password'),
+            'department_id' => $departmentHR->id,
+        ]);
+        $tes4->assignRole('Manager');
 
         $admin = User::create([
             'id' => (string) Str::uuid(),
-            'name' => 'Human Resource Management HR Staff',
+            'name' => 'HR Staff',
             'email' => 'hr@gmail.com',
             'password' => Hash::make('password'),
-            'department_id' => $department->id,
+            'department_id' => $departmentHR->id,
         ]);
-        $admin->assignRole('HR Staff');
+        $admin->assignRole('Staff');
 
         $roles = Role::pluck('name')->toArray();
         User::factory(10)->create()->each(function ($user) use ($roles) {
             $user->assignRole(fake()->randomElement($roles));
         });
-
-
-
 
         for ($i = 0; $i < 100; $i++){
             //DONE

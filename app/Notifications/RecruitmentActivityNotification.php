@@ -5,6 +5,7 @@ namespace App\Notifications;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class RecruitmentActivityNotification extends Notification implements ShouldQueue
@@ -13,19 +14,57 @@ class RecruitmentActivityNotification extends Notification implements ShouldQueu
 
     public function __construct(
         public string $recruitmentId,
-        public string $action,         // 'updated' | 'status_changed'
+        public string $action,
         public string $performedByName,
         public string $performedById,
-        public array  $context = []    // ['from'=>'progress','to'=>'finish','title'=>'...']
+        public ?string $department,
+        public array  $context = [],
+        public bool   $sendMail = false,
     ) {
-        // gunakan properti dari trait Queueable (JANGAN deklar ulang)
         $this->afterCommit = true;
     }
 
     public function via($notifiable): array
     {
-        // broadcast saja (DB notif pakai Filament Notification)
-        return ['broadcast'];
+        $channels = ['broadcast'];
+        if ($this->sendMail && filled($notifiable->email)) {
+            $channels[] = 'mail';
+        };
+
+        return $channels;
+    }
+
+    public function toMail($notifiable): MailMessage
+    {
+        $url = route('filament.admin.resources.recruitment-phases.edit', $this->recruitmentId);
+
+        $subject = match ($this->action) {
+            'status_changed'      => "Status Rekrutmen Diperbarui #{$this->recruitmentId}",
+            'phase_status_changed'=> "Pembaharuan Status Tahap Perekrutan Departemen {$this->department}",
+            default               => "Rekrutmen Diperbarui #{$this->recruitmentId}",
+        };
+
+
+        $line = match ($this->action) {
+            'status_changed' => "{$this->performedByName} mengubah status #{$this->recruitmentId}: ".
+                ($this->context['from'] ?? '-') . " → " . ($this->context['to'] ?? '-'),
+            'phase_status_changed' => "{$this->performedByName} telah memperbarui status tahap perekrutan departemen ".
+                ($this->department)." dari {$this->context['from']} menjadi {$this->context['to']}",
+            default          => "{$this->performedByName} memperbarui #{$this->recruitmentId}: ".
+                ($this->context['title'] ?? 'Detail diperbarui'),
+        };
+
+        return (new MailMessage)
+            ->subject($subject)
+            ->greeting('Halo,')
+            ->line($line)
+            ->action('Lihat di HRIS', $url)
+            ->salutation('Terima kasih');
+    }
+
+    public function broadcastType(): string
+    {
+        return 'recruitment.activity';
     }
 
     public function toArray($notifiable): array
@@ -40,26 +79,6 @@ class RecruitmentActivityNotification extends Notification implements ShouldQueu
             'body'           => $this->buildBody(),
             'status'         => $this->mapStatus(),
         ];
-    }
-
-    public function toBroadcast($notifiable): BroadcastMessage
-    {
-        return new BroadcastMessage($this->toArray($notifiable));
-    }
-
-    public function viaQueues(): array
-    {
-        return ['broadcast' => 'broadcasts']; // optional: queue khusus
-    }
-
-    public function viaConnections(): array
-    {
-        return ['broadcast' => 'redis'];      // optional: koneksi queue
-    }
-
-    public function broadcastType(): string
-    {
-        return 'recruitment.activity';
     }
 
     private function buildBody(): string
@@ -78,12 +97,37 @@ class RecruitmentActivityNotification extends Notification implements ShouldQueu
                 $this->recruitmentId,
                 $this->context['title'] ?? 'Detail diperbarui',
             ),
-            default => sprintf('%s melakukan %s pada #%s', $this->performedByName, $this->action, $this->recruitmentId),
+            'phase_status_changed' => sprintf(
+                '%s telah memperbarui status tahap perekrutan departemen %s dari %s menjadi %s',
+                $this->performedByName,
+                $this->department,
+                $this->context['from'],
+                $this->context['to'],
+            ),
+            default => sprintf(
+                '%s melakukan %s pada #%s',
+                $this->performedByName, $this->action,
+                $this->recruitmentId),
         };
+    }
+
+    public function toBroadcast($notifiable): BroadcastMessage
+    {
+        return new BroadcastMessage($this->toArray($notifiable));
+    }
+
+    public function viaQueues(): array
+    {
+        return ['broadcast' => 'broadcasts'];
+    }
+
+    public function viaConnections(): array
+    {
+        return ['broadcast' => 'redis'];
     }
 
     private function mapStatus(): string
     {
-        return $this->action === 'status_changed' ? 'success' : 'info';
+        return $this->action === 'status_changed' ? 'Success' : 'Info';
     }
 }

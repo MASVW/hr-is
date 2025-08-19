@@ -17,7 +17,6 @@ class RoleSeeder extends Seeder
     public function run(): void
     {
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
-        $department = Department::all()->pluck('name')->toArray();
 
         Permission::create(['name' => 'create']);
         Permission::create(['name' => 'edit']);
@@ -29,22 +28,22 @@ class RoleSeeder extends Seeder
         Permission::create(['name' => 'read form']);
         Permission::create(['name' => 'delete form']);
 
-        for ($i = 0; $i < count($department); $i++){
-            $role = Role::create([
-                'name' => $department[$i]
-            ]);
-            $role->givePermissionTo('edit');
-            $role->givePermissionTo('read');
-            $role->givePermissionTo('delete');
-            $role->givePermissionTo('create');
 
-            if ($role == "Human Resource"){
-                $role->givePermissionTo('create form');
-                $role->givePermissionTo('edit form');
-                $role->givePermissionTo('read form');
-                $role->givePermissionTo('delete form');
-            }
-        };
+        $r1 = Role::create(['name' => 'Team Leader']);
+        $r2 = Role::create(['name' => 'Staff']);
+        $r3 = Role::create(['name' => 'Manager']);
+
+        $r1->givePermissionTo('read');
+        $r1->givePermissionTo('create');
+        $r1->givePermissionTo('edit');
+        $r1->givePermissionTo('delete');
+
+        $r2->givePermissionTo('read');
+        $r2->givePermissionTo('edit');
+
+        $r3->givePermissionTo('read');
+        $r3->givePermissionTo('edit');
+
         Role::create(['name' => 'Super-Admin']);
     }
 }

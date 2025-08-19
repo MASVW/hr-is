@@ -3,10 +3,9 @@
 namespace App\Filament\Resources\RecruitmentPhaseResource\Pages;
 
 use App\Filament\Resources\RecruitmentPhaseResource;
+use App\Models\Department;
 use App\Models\User;
-use App\Notifications\RecruitmentActivityNotification;
 use App\Support\Notify;
-use Filament\Actions;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
@@ -14,37 +13,59 @@ use Filament\Forms\Components\Tabs;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification as FNotification;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
-use Filament\Notifications\Notification as FNotification;
 use Illuminate\Support\Facades\DB;
-
 
 class EditRecruitmentPhase extends EditRecord
 {
     protected static string $resource = RecruitmentPhaseResource::class;
+
     public ?int $pendingIndex = null;
     public ?string $pendingNewStatus = null;
     public ?int $editedIndex = null;
 
+    public $department;
+    public $departmentId;
+    public $hrDepartmentId;
+
+    /** Perubahan terakhir (untuk afterSave) */
+    protected array $latestChanges = [];
+
+    /** Key yang tidak disertakan dalam diff */
+    protected array $diffExcludeKeys = ['reviseNotes', 'form_data', 'status'];
+
+    /** Pastikan department tersedia lebih awal */
+    protected function beforeFill(): void
+    {
+        $r = $this->getRecord();
+        $this->department = $r?->recruitmentRequest?->department?->name ?? null;
+        $this->departmentId = $r?->recruitmentRequest?->department?->id ?? null;
+        $this->hrDepartmentId =  Department::where('name', 'HUMAN RESOURCE')->first()->id;
+    }
+
     public function form(Form $form): Form
     {
         $statusOption = [
-            "finish" => "Finished",
-            "progress" => "On Progress",
+            'finish'   => 'Finished',
+            'progress' => 'On Progress',
         ];
+
         return $form
             ->schema([
                 TextInput::make('status')
                     ->disabled()
                     ->dehydrated(false)
                     ->afterStateHydrated(function ($component) {
-                        $component->state(fn($state) => ucfirst($state));
+                        $component->state(fn ($state) => ucfirst($state));
                     })
                     ->required()
                     ->maxLength(255),
+
                 DateTimePicker::make('started_at')
                     ->disabled()
                     ->dehydrated(false),
@@ -66,8 +87,8 @@ class EditRecruitmentPhase extends EditRecord
                                 Tabs\Tab::make('CV Collection')
                                     ->statePath('phases.2')
                                     ->icon('heroicon-o-document-text')
-                                    ->badge(fn($record) => ucfirst($record->form_data['phases'][2]['status'] ?? ''))
-                                    ->badgeColor(fn($record) => match ($record->form_data['phases'][2]['status'] ?? null) {
+                                    ->badge(fn ($record) => ucfirst($record->form_data['phases'][2]['status'] ?? ''))
+                                    ->badgeColor(fn ($record) => match ($record->form_data['phases'][2]['status'] ?? null) {
                                         'progress' => 'success',
                                         'finish' => 'primary',
                                         default => 'gray'
@@ -87,14 +108,14 @@ class EditRecruitmentPhase extends EditRecord
                                         Textarea::make('note'),
                                         Textarea::make('reviseNotes')
                                             ->dehydrated(true)
-                                            ->afterStateHydrated(fn($component) => $component->state(''))
+                                            ->afterStateHydrated(fn ($component) => $component->state(''))
                                             ->label('Revise Notes')
                                             ->helperText('Wajib diisi saat mengubah dari Finished ke Pending / On Progress.')
                                             ->debounce(300)
                                             ->live()
                                             ->reactive()
-                                            ->required(fn() => $this->editedIndex === 2 && $this->pendingNewStatus !== null)
-                                            ->hidden(fn() => $this->editedIndex !== 2)
+                                            ->required(fn () => $this->editedIndex === 2 && $this->pendingNewStatus !== null)
+                                            ->hidden(fn () => $this->editedIndex !== 2)
                                             ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                                 if (filled($state)) {
                                                     $this->tryApplyPendingChange($get, $set);
@@ -106,8 +127,8 @@ class EditRecruitmentPhase extends EditRecord
                                 Tabs\Tab::make('CV Screening')
                                     ->statePath('phases.3')
                                     ->icon('heroicon-o-magnifying-glass')
-                                    ->badge(fn($record) => ucfirst($record->form_data['phases'][3]['status'] ?? ''))
-                                    ->badgeColor(fn($record) => match ($record->form_data['phases'][3]['status'] ?? null) {
+                                    ->badge(fn ($record) => ucfirst($record->form_data['phases'][3]['status'] ?? ''))
+                                    ->badgeColor(fn ($record) => match ($record->form_data['phases'][3]['status'] ?? null) {
                                         'progress' => 'success',
                                         'finish' => 'primary',
                                         default => 'gray'
@@ -127,14 +148,14 @@ class EditRecruitmentPhase extends EditRecord
                                         Textarea::make('note'),
                                         Textarea::make('reviseNotes')
                                             ->dehydrated(true)
-                                            ->afterStateHydrated(fn($component) => $component->state(''))
+                                            ->afterStateHydrated(fn ($component) => $component->state(''))
                                             ->label('Revise Notes')
                                             ->helperText('Wajib diisi saat mengubah dari Finished ke Pending / On Progress.')
                                             ->debounce(300)
                                             ->live()
                                             ->reactive()
-                                            ->required(fn() => $this->editedIndex === 3 && $this->pendingNewStatus !== null)
-                                            ->hidden(fn() => $this->editedIndex !== 3)
+                                            ->required(fn () => $this->editedIndex === 3 && $this->pendingNewStatus !== null)
+                                            ->hidden(fn () => $this->editedIndex !== 3)
                                             ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                                 if (filled($state)) {
                                                     $this->tryApplyPendingChange($get, $set);
@@ -146,8 +167,8 @@ class EditRecruitmentPhase extends EditRecord
                                 Tabs\Tab::make('Check Background')
                                     ->statePath('phases.4')
                                     ->icon('heroicon-o-shield-check')
-                                    ->badge(fn($record) => ucfirst($record->form_data['phases'][4]['status'] ?? ''))
-                                    ->badgeColor(fn($record) => match ($record->form_data['phases'][4]['status'] ?? null) {
+                                    ->badge(fn ($record) => ucfirst($record->form_data['phases'][4]['status'] ?? ''))
+                                    ->badgeColor(fn ($record) => match ($record->form_data['phases'][4]['status'] ?? null) {
                                         'progress' => 'success',
                                         'finish' => 'primary',
                                         default => 'gray'
@@ -161,23 +182,20 @@ class EditRecruitmentPhase extends EditRecord
                                             ->afterStateUpdated(function (string $state, Set $set, Get $get) {
                                                 $this->onPhaseStatusChange(4, $state, $get, $set);
                                             }),
-                                        TextInput::make('candidate')
-                                            ->numeric(),
-                                        TextInput::make('checked')
-                                            ->numeric(),
-                                        TextInput::make('passed')
-                                            ->numeric(),
+                                        TextInput::make('candidate')->numeric(),
+                                        TextInput::make('checked')->numeric(),
+                                        TextInput::make('passed')->numeric(),
                                         Textarea::make('note'),
                                         Textarea::make('reviseNotes')
                                             ->dehydrated(true)
-                                            ->afterStateHydrated(fn($component) => $component->state(''))
+                                            ->afterStateHydrated(fn ($component) => $component->state(''))
                                             ->label('Revise Notes')
                                             ->helperText('Wajib diisi saat mengubah dari Finished ke Pending / On Progress.')
                                             ->debounce(300)
                                             ->live()
                                             ->reactive()
-                                            ->required(fn() => $this->editedIndex === 4 && $this->pendingNewStatus !== null)
-                                            ->hidden(fn() => $this->editedIndex !== 4)
+                                            ->required(fn () => $this->editedIndex === 4 && $this->pendingNewStatus !== null)
+                                            ->hidden(fn () => $this->editedIndex !== 4)
                                             ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                                 if (filled($state)) {
                                                     $this->tryApplyPendingChange($get, $set);
@@ -189,8 +207,8 @@ class EditRecruitmentPhase extends EditRecord
                                 Tabs\Tab::make('Psychology Assessment')
                                     ->statePath('phases.5')
                                     ->icon('heroicon-o-clipboard-document-check')
-                                    ->badge(fn($record) => ucfirst($record->form_data['phases'][5]['status'] ?? ''))
-                                    ->badgeColor(fn($record) => match ($record->form_data['phases'][5]['status'] ?? null) {
+                                    ->badge(fn ($record) => ucfirst($record->form_data['phases'][5]['status'] ?? ''))
+                                    ->badgeColor(fn ($record) => match ($record->form_data['phases'][5]['status'] ?? null) {
                                         'progress' => 'success',
                                         'finish' => 'primary',
                                         default => 'gray'
@@ -204,23 +222,20 @@ class EditRecruitmentPhase extends EditRecord
                                             ->afterStateUpdated(function (string $state, Set $set, Get $get) {
                                                 $this->onPhaseStatusChange(5, $state, $get, $set);
                                             }),
-                                        TextInput::make('candidate')
-                                            ->numeric(),
-                                        TextInput::make('finished')
-                                            ->numeric(),
-                                        TextInput::make('passed')
-                                            ->numeric(),
+                                        TextInput::make('candidate')->numeric(),
+                                        TextInput::make('finished')->numeric(),
+                                        TextInput::make('passed')->numeric(),
                                         Textarea::make('note'),
                                         Textarea::make('reviseNotes')
                                             ->dehydrated(true)
-                                            ->afterStateHydrated(fn($component) => $component->state(''))
+                                            ->afterStateHydrated(fn ($component) => $component->state(''))
                                             ->label('Revise Notes')
                                             ->helperText('Wajib diisi saat mengubah dari Finished ke Pending / On Progress.')
                                             ->debounce(300)
                                             ->live()
                                             ->reactive()
-                                            ->required(fn() => $this->editedIndex === 5 && $this->pendingNewStatus !== null)
-                                            ->hidden(fn() => $this->editedIndex !== 5)
+                                            ->required(fn () => $this->editedIndex === 5 && $this->pendingNewStatus !== null)
+                                            ->hidden(fn () => $this->editedIndex !== 5)
                                             ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                                 if (filled($state)) {
                                                     $this->tryApplyPendingChange($get, $set);
@@ -231,8 +246,8 @@ class EditRecruitmentPhase extends EditRecord
                                 Tabs\Tab::make('HRD Interview')
                                     ->statePath('phases.6')
                                     ->icon('heroicon-o-chat-bubble-left-right')
-                                    ->badge(fn($record) => ucfirst($record->form_data['phases'][6]['status'] ?? ''))
-                                    ->badgeColor(fn($record) => match ($record->form_data['phases'][6]['status'] ?? null) {
+                                    ->badge(fn ($record) => ucfirst($record->form_data['phases'][6]['status'] ?? ''))
+                                    ->badgeColor(fn ($record) => match ($record->form_data['phases'][6]['status'] ?? null) {
                                         'progress' => 'success',
                                         'finish' => 'primary',
                                         default => 'gray'
@@ -246,23 +261,20 @@ class EditRecruitmentPhase extends EditRecord
                                             ->afterStateUpdated(function (string $state, Set $set, Get $get) {
                                                 $this->onPhaseStatusChange(6, $state, $get, $set);
                                             }),
-                                        TextInput::make('interviewed')
-                                            ->numeric(),
-                                        TextInput::make('candidate')
-                                            ->numeric(),
-                                        TextInput::make('passed')
-                                            ->numeric(),
+                                        TextInput::make('interviewed')->numeric(),
+                                        TextInput::make('candidate')->numeric(),
+                                        TextInput::make('passed')->numeric(),
                                         Textarea::make('note'),
                                         Textarea::make('reviseNotes')
                                             ->dehydrated(true)
-                                            ->afterStateHydrated(fn($component) => $component->state(''))
+                                            ->afterStateHydrated(fn ($component) => $component->state(''))
                                             ->label('Revise Notes')
                                             ->helperText('Wajib diisi saat mengubah dari Finished ke Pending / On Progress.')
                                             ->debounce(300)
                                             ->live()
                                             ->reactive()
-                                            ->required(fn() => $this->editedIndex === 6 && $this->pendingNewStatus !== null)
-                                            ->hidden(fn() => $this->editedIndex !== 6)
+                                            ->required(fn () => $this->editedIndex === 6 && $this->pendingNewStatus !== null)
+                                            ->hidden(fn () => $this->editedIndex !== 6)
                                             ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                                 if (filled($state)) {
                                                     $this->tryApplyPendingChange($get, $set);
@@ -274,8 +286,8 @@ class EditRecruitmentPhase extends EditRecord
                                 Tabs\Tab::make('Interview with User')
                                     ->statePath('phases.7')
                                     ->icon('heroicon-o-user-group')
-                                    ->badge(fn($record) => ucfirst($record->form_data['phases'][7]['status'] ?? ''))
-                                    ->badgeColor(fn($record) => match ($record->form_data['phases'][7]['status'] ?? null) {
+                                    ->badge(fn ($record) => ucfirst($record->form_data['phases'][7]['status'] ?? ''))
+                                    ->badgeColor(fn ($record) => match ($record->form_data['phases'][7]['status'] ?? null) {
                                         'progress' => 'success',
                                         'finish' => 'primary',
                                         default => 'gray'
@@ -289,23 +301,20 @@ class EditRecruitmentPhase extends EditRecord
                                             ->afterStateUpdated(function (string $state, Set $set, Get $get) {
                                                 $this->onPhaseStatusChange(7, $state, $get, $set);
                                             }),
-                                        TextInput::make('interviewed')
-                                            ->numeric(),
-                                        TextInput::make('candidate')
-                                            ->numeric(),
-                                        TextInput::make('passed')
-                                            ->numeric(),
+                                        TextInput::make('interviewed')->numeric(),
+                                        TextInput::make('candidate')->numeric(),
+                                        TextInput::make('passed')->numeric(),
                                         Textarea::make('note'),
                                         Textarea::make('reviseNotes')
                                             ->dehydrated(true)
-                                            ->afterStateHydrated(fn($component) => $component->state(''))
+                                            ->afterStateHydrated(fn ($component) => $component->state(''))
                                             ->label('Revise Notes')
                                             ->helperText('Wajib diisi saat mengubah dari Finished ke Pending / On Progress.')
                                             ->debounce(300)
                                             ->live()
                                             ->reactive()
-                                            ->required(fn() => $this->editedIndex === 7 && $this->pendingNewStatus !== null)
-                                            ->hidden(fn() => $this->editedIndex !== 7)
+                                            ->required(fn () => $this->editedIndex === 7 && $this->pendingNewStatus !== null)
+                                            ->hidden(fn () => $this->editedIndex !== 7)
                                             ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                                 if (filled($state)) {
                                                     $this->tryApplyPendingChange($get, $set);
@@ -317,8 +326,8 @@ class EditRecruitmentPhase extends EditRecord
                                 Tabs\Tab::make('Offering')
                                     ->statePath('phases.8')
                                     ->icon('heroicon-o-briefcase')
-                                    ->badge(fn($record) => ucfirst($record->form_data['phases'][8]['status'] ?? ''))
-                                    ->badgeColor(fn($record) => match ($record->form_data['phases'][8]['status'] ?? null) {
+                                    ->badge(fn ($record) => ucfirst($record->form_data['phases'][8]['status'] ?? ''))
+                                    ->badgeColor(fn ($record) => match ($record->form_data['phases'][8]['status'] ?? null) {
                                         'progress' => 'success',
                                         'finish' => 'primary',
                                         default => 'gray'
@@ -332,23 +341,20 @@ class EditRecruitmentPhase extends EditRecord
                                             ->afterStateUpdated(function (string $state, Set $set, Get $get) {
                                                 $this->onPhaseStatusChange(8, $state, $get, $set);
                                             }),
-                                        TextInput::make('candidate')
-                                            ->numeric(),
-                                        TextInput::make('offered')
-                                            ->numeric(),
-                                        TextInput::make('agreed')
-                                            ->numeric(),
+                                        TextInput::make('candidate')->numeric(),
+                                        TextInput::make('offered')->numeric(),
+                                        TextInput::make('agreed')->numeric(),
                                         Textarea::make('note'),
                                         Textarea::make('reviseNotes')
                                             ->dehydrated(true)
-                                            ->afterStateHydrated(fn($component) => $component->state(''))
+                                            ->afterStateHydrated(fn ($component) => $component->state(''))
                                             ->label('Revise Notes')
                                             ->helperText('Wajib diisi saat mengubah dari Finished ke Pending / On Progress.')
                                             ->debounce(300)
                                             ->live()
                                             ->reactive()
-                                            ->required(fn() => $this->editedIndex === 8 && $this->pendingNewStatus !== null)
-                                            ->hidden(fn() => $this->editedIndex !== 8)
+                                            ->required(fn () => $this->editedIndex === 8 && $this->pendingNewStatus !== null)
+                                            ->hidden(fn () => $this->editedIndex !== 8)
                                             ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                                 if (filled($state)) {
                                                     $this->tryApplyPendingChange($get, $set);
@@ -360,8 +366,8 @@ class EditRecruitmentPhase extends EditRecord
                                 Tabs\Tab::make('Onboarding')
                                     ->statePath('phases.9')
                                     ->icon('heroicon-o-rocket-launch')
-                                    ->badge(fn($record) => ucfirst($record->form_data['phases'][9]['status'] ?? ''))
-                                    ->badgeColor(fn($record) => match ($record->form_data['phases'][9]['status'] ?? null) {
+                                    ->badge(fn ($record) => ucfirst($record->form_data['phases'][9]['status'] ?? ''))
+                                    ->badgeColor(fn ($record) => match ($record->form_data['phases'][9]['status'] ?? null) {
                                         'progress' => 'success',
                                         'finish' => 'primary',
                                         default => 'gray'
@@ -375,19 +381,18 @@ class EditRecruitmentPhase extends EditRecord
                                             ->afterStateUpdated(function (string $state, Set $set, Get $get) {
                                                 $this->onPhaseStatusChange(9, $state, $get, $set);
                                             }),
-                                        TextInput::make('onboarded')
-                                            ->numeric(),
+                                        TextInput::make('onboarded')->numeric(),
                                         Textarea::make('note'),
                                         Textarea::make('reviseNotes')
                                             ->dehydrated(true)
-                                            ->afterStateHydrated(fn($component) => $component->state(''))
+                                            ->afterStateHydrated(fn ($component) => $component->state(''))
                                             ->label('Revise Notes')
                                             ->helperText('Wajib diisi saat mengubah dari Finished ke Pending / On Progress.')
                                             ->debounce(300)
                                             ->live()
                                             ->reactive()
-                                            ->required(fn() => $this->editedIndex === 9 && $this->pendingNewStatus !== null)
-                                            ->hidden(fn() => $this->editedIndex !== 9)
+                                            ->required(fn () => $this->editedIndex === 9 && $this->pendingNewStatus !== null)
+                                            ->hidden(fn () => $this->editedIndex !== 9)
                                             ->afterStateUpdated(function ($state, Set $set, Get $get) {
                                                 if (filled($state)) {
                                                     $this->tryApplyPendingChange($get, $set);
@@ -400,6 +405,7 @@ class EditRecruitmentPhase extends EditRecord
                     ])
             ]);
     }
+
     protected function requiresReviseNotes(?string $oldStatus, ?string $newStatus): bool
     {
         return $oldStatus === 'finish' && in_array($newStatus, ['progress', 'pending'], true);
@@ -436,7 +442,7 @@ class EditRecruitmentPhase extends EditRecord
 
         $user = auth()->user();
         $phases[$index]['reviseNotes'][] = [
-            'tanggal' => now()->format(DATE_ATOM), // ISO-8601
+            'tanggal' => now()->format(DATE_ATOM),
             'alasan'  => $reason,
             'user'    => $user?->name ?? $user?->email ?? (string) $user?->id ?? 'system',
         ];
@@ -444,20 +450,22 @@ class EditRecruitmentPhase extends EditRecord
         return $phases;
     }
 
+    /** BUGFIX: jangan reset sebelum dipakai */
     protected function tryApplyPendingChange(Get $get, Set $set): void
     {
         if ($this->pendingIndex === null || $this->pendingNewStatus === null) return;
 
-        $idx    = $this->pendingIndex;
-        $reason = trim((string) ($get("form_data.phases.$idx.reviseNotes") ?? ''));
+        $idx       = $this->pendingIndex;
+        $newStatus = $this->pendingNewStatus;
 
+        $reason = trim((string) ($get("form_data.phases.$idx.reviseNotes") ?? ''));
         if ($reason === '') return;
 
-        $this->pendingIndex = null;
+        $this->pendingIndex     = null;
         $this->pendingNewStatus = null;
-        $this->editedIndex = null;
+        $this->editedIndex      = null;
 
-        $this->onPhaseStatusChange($idx, $this->pendingNewStatus, $get, $set);
+        $this->onPhaseStatusChange($idx, $newStatus, $get, $set);
     }
 
     protected function onPhaseStatusChange(int $index, string $newStatus, Get $get, Set $set): void
@@ -478,7 +486,7 @@ class EditRecruitmentPhase extends EditRecord
 
             $reason = trim((string) ($get("form_data.phases.$index.reviseNotes") ?? ''));
             if ($reason === '') {
-                $this->pendingIndex = $index;
+                $this->pendingIndex     = $index;
                 $this->pendingNewStatus = $newStatus;
 
                 FNotification::make()
@@ -489,76 +497,91 @@ class EditRecruitmentPhase extends EditRecord
                 return;
             }
 
-            // Catat log revisi & bersihkan input sementara
             $dbPhases = $this->appendReviseLog($dbPhases, $index, $reason);
             $set("form_data.phases.$index.reviseNotes", null);
 
-            // CLEAR flags karena alasan sudah dipenuhi
-            $this->editedIndex = null;
-            $this->pendingIndex = null;
+            $this->editedIndex      = null;
+            $this->pendingIndex     = null;
             $this->pendingNewStatus = null;
         } else {
-            $this->editedIndex = null;
-            $this->pendingIndex = null;
+            $this->editedIndex      = null;
+            $this->pendingIndex     = null;
             $this->pendingNewStatus = null;
         }
 
-        // Terapkan aturan status + sanitasi
         $phases = $this->applyRules($dbPhases, $index, $newStatus);
         $phases = $this->sanitizePhases($phases);
 
-        // Sinkronkan ke UI
         foreach ($phases as $i => $p) {
             if (array_key_exists('status', $p)) {
                 $set("form_data.phases.$i.status", $p['status']);
             }
         }
 
-        // Simpan (savePhases sudah transactional)
         $saved   = $this->savePhases($phases);
         $changed = $oldStatus !== $newStatus;
 
-        // Refresh record untuk memastikan data mutakhir
         $record->refresh();
 
         if ($changed && $saved) {
-            // 1) Toast lokal (operator)
             FNotification::make()
-                ->title('Status phase diperbarui')
-                ->body("{$record->title} · {$phaseName}: {$oldStatus} → {$newStatus}")
+                ->title("{$record->recruitmentRequest->title} Berhasil Diperbaharui")
+                ->body("Perubahan status menjadi {$newStatus}")
                 ->success()
                 ->send();
 
-            // 2) Kirim bel + toast realtime ke penerima (HR Manager)
             $actor = auth()->user();
 
-            $recipients = \App\Models\User::role(['HR Manager'])
-                ->when($actor, fn ($q) => $q->whereKeyNot($actor->getKey())) // opsional: exclude pelaksana
-                ->get();
+//            $recipients = User::role(['HR Manager'])
+//                ->when($actor, fn ($q) => $q->whereKeyNot($actor->getKey()))
+//                ->get();
 
-            \App\Support\Notify::recruitmentActivity(
-                recipients:    $recipients,
+
+            $recipients = self::getRecipients($actor);
+
+            Notify::recruitmentActivity(
+                recipients: $recipients,
                 recruitmentId: (string) $record->getKey(),
-                action:        'status_changed',
-                context:       [
+                action: 'phase_status_changed',
+                context: [
                     'from'  => $oldStatus,
                     'to'    => $newStatus,
                     'title' => $record->title,
                     'phase' => $phaseName,
                     'index' => $index,
                 ],
-                actorId:       (string) ($actor->id ?? 'system'),
-                actorName:     $actor->name ?? 'System',
+                actorId: (string) ($actor->id ?? 'system'),
+                actorName: $actor->name ?? 'System',
+                department: $this->department,
             );
         }
     }
 
+    protected function getRecipients($actor): Collection
+    {
+        return User::where(function ($query) {
+            // Manager dari HR berdasarkan department ID
+            $query->whereHas('roles', function ($q) {
+                $q->whereIn('name', ['Manager', 'Team Leader']);
+            })->where('department_id', $this->hrDepartmentId);
+        })
+            ->orWhere(function ($query) {
+                // Team Leader dari department yang sama
+                $query->whereHas('roles', function ($r) {
+                    $r->where('name', 'Team Leader');
+                })->where('department_id', $this->departmentId);
+            })
+            ->when($actor, function ($q) use ($actor) {
+                $q->where('id', '!=', $actor->getKey());
+            })
+            ->get();
+    }
 
     protected function sanitizePhases(array $phases): array
     {
         foreach ($phases as &$phase) {
             if (is_array($phase) && array_key_exists('form_data', $phase)) {
-                unset($phase['form_data']); // buang kontaminan
+                unset($phase['form_data']);
             }
         }
         return $phases;
@@ -620,25 +643,20 @@ class EditRecruitmentPhase extends EditRecord
     {
         $record = $this->getRecord()->refresh();
 
-        // Sanitize input baru & existing
         $newPhases = $this->sanitizePhases($phases);
         $data      = $record->form_data ?? [];
         $oldPhases = $this->sanitizePhases($data['phases'] ?? []);
 
-        // Cegah write kalau tidak ada perubahan
         if (json_encode($newPhases) === json_encode($oldPhases)) {
             return false;
         }
 
-        // Persist atomically
         DB::transaction(function () use ($record, $data, $newPhases) {
             $payload = $data;
             $payload['phases'] = $newPhases;
-
             $record->forceFill(['form_data' => $payload])->save();
         });
 
-        // Segarkan state form
         $record->refresh();
         $this->fillForm();
 
@@ -652,24 +670,102 @@ class EditRecruitmentPhase extends EditRecord
         return true;
     }
 
+    /**
+     * Normalisasi value untuk perbandingan agar 1 vs "1" tidak dianggap beda.
+     */
+    protected function normalizeForDiff($v)
+    {
+        if (is_null($v)) return null;
+        if (is_bool($v)) return $v ? '1' : '0';
+        if (is_int($v) || is_float($v)) return (string) $v;
+        if (is_string($v)) return $v;
+        return json_encode($v);
+    }
+
+    /**
+     * Buat daftar perubahan (diff) antara $before dan $after.
+     * - Abaikan key pada $this->diffExcludeKeys
+     * - Tangkap perubahan top-level form_data dan tiap phases[i].*
+     */
+    protected function diffFormData(array $before, array $after): array
+    {
+        $changes = [];
+
+        // Top-level (selain phases)
+        $keys = array_unique(array_merge(array_keys($before), array_keys($after)));
+        foreach ($keys as $k) {
+            if ($k === 'phases') continue;
+            if (in_array($k, $this->diffExcludeKeys, true)) continue;
+
+            $old = $before[$k] ?? null;
+            $new = $after[$k] ?? null;
+
+            if ($this->normalizeForDiff($old) !== $this->normalizeForDiff($new)) {
+                $changes[] = [
+                    'scope' => 'form_data',
+                    'phase' => null,
+                    'index' => null,
+                    'field' => $k,
+                    'from'  => $old,
+                    'to'    => $new,
+                ];
+            }
+        }
+
+        // Per-phase
+        $bp = $before['phases'] ?? [];
+        $ap = $after['phases'] ?? [];
+        $max = max(count($bp), count($ap));
+
+        for ($i = 0; $i < $max; $i++) {
+            $bpi = $bp[$i] ?? [];
+            $api = $ap[$i] ?? [];
+            $phaseName = $api['name'] ?? $bpi['name'] ?? ('Phase #'.($i + 1));
+
+            $kset = array_unique(array_merge(array_keys($bpi), array_keys($api)));
+            foreach ($kset as $field) {
+                if (in_array($field, $this->diffExcludeKeys, true)) continue;
+
+                $old = $bpi[$field] ?? null;
+                $new = $api[$field] ?? null;
+
+                if ($this->normalizeForDiff($old) !== $this->normalizeForDiff($new)) {
+                    $changes[] = [
+                        'scope' => 'phase',
+                        'phase' => $phaseName,
+                        'index' => $i,
+                        'field' => $field,
+                        'from'  => $old,
+                        'to'    => $new,
+                    ];
+                }
+            }
+        }
+
+        return $changes;
+    }
+
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         $record->refresh();
+
+        // Snapshot sebelum perubahan
+        $before = $record->form_data ?? [];
 
         $db    = $record->form_data ?? [];
         $input = $data['form_data'] ?? [];
 
         if ($this->pendingIndex !== null && $this->pendingNewStatus !== null) {
             $idx    = $this->pendingIndex;
-            $reason = trim((string) ($input['phases'][$idx]['reviseNotes'] ?? '')); // ← baca dari payload
+            $reason = trim((string) ($input['phases'][$idx]['reviseNotes'] ?? ''));
 
             if ($reason !== '' && isset(($db['phases'] ?? [])[$idx])) {
                 $db['phases'] = $this->appendReviseLog($db['phases'], $idx, $reason);
                 $db['phases'] = $this->applyRules($db['phases'], $idx, $this->pendingNewStatus);
 
-                $this->pendingIndex = null;
+                $this->pendingIndex     = null;
                 $this->pendingNewStatus = null;
-                $this->editedIndex = null;
+                $this->editedIndex      = null;
             }
         }
 
@@ -696,6 +792,10 @@ class EditRecruitmentPhase extends EditRecord
         }
 
         $db['phases'] = $this->sanitizePhases($db['phases'] ?? []);
+
+        // === DIFF & SAVE ===
+        $this->latestChanges = $this->diffFormData($before, $db);
+
         $record->form_data = $db;
         $record->save();
 
@@ -704,29 +804,44 @@ class EditRecruitmentPhase extends EditRecord
 
     protected function afterSave(): void
     {
-        // Ambil record terbaru
         $record = $this->getRecord()->refresh();
 
         FNotification::make()
-            ->title('Recruitment updated')
-            ->body("{$record->title} berhasil disimpan.")
+            ->title("Tahap {$record->recruitmentRequest->title} berhasil diperbarui")
             ->success()
             ->send();
 
         $actor = auth()->user();
 
-        $recipients = User::role(['HR Manager'])
-            ->when($actor, fn ($q) => $q->whereKeyNot($actor->getKey()))
-            ->get();
+        $recipients = self::getRecipients($actor);
 
+        $changesPayload = array_map(function (array $c) {
+            return [
+                'updating'  => 'update',
+                'scope'     => $c['scope'],     // 'form_data' | 'phase'
+                'phase'     => $c['phase'],     // null untuk top-level
+                'index'     => $c['index'],     // null untuk top-level
+                'field'     => $c['field'],
+                'oldValue'  => $c['from'],
+                'newValue'  => $c['to'],
+            ];
+        }, $this->latestChanges);
+
+
+        dd($changesPayload);
+        // Kirim satu notifikasi dengan kumpulan perubahan
         Notify::recruitmentActivity(
             recipients:    $recipients,
             recruitmentId: (string) $record->getKey(),
-            action:        'updated',
-            context:       ['title' => $record->title],
+            action:        'detail_change',
+            context:       $changesPayload,
             actorId:       (string) ($actor->id ?? 'system'),
             actorName:     $actor->name ?? 'System',
+            department:    $this->department,
         );
+
+        // reset cache perubahan setelah terkirim
+        $this->latestChanges = [];
 
         $this->fillForm();
     }

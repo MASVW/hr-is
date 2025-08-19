@@ -12,11 +12,9 @@
                             {{ $data['body'] ?? \Illuminate\Support\Str::limit(json_encode($data), 120) }}
                         </div>
                         <div class="mt-1 text-xs text-gray-500">
-                            #{{ $data['recruitment_id'] ?? '-' }} &middot;
                             {{ \Carbon\Carbon::parse($data['at'] ?? $n->created_at)->isoFormat('DD MMMM YYYY HH:mm') }}
                         </div>
                     </div>
-                    <x-filament::badge color="{{ $data['status'] ?? 'gray' }}">{{ $data['action'] ?? 'info' }}</x-filament::badge>
                 </div>
             </x-filament::section>
         @endforeach
