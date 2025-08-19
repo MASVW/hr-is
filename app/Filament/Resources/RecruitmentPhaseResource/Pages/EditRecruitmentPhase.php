@@ -33,11 +33,12 @@ class EditRecruitmentPhase extends EditRecord
     public $departmentId;
     public $hrDepartmentId;
 
-    /** Perubahan terakhir (untuk afterSave) */
-    protected array $latestChanges = [];
+    public array $accumulatedChanges = [];
+
+    public array $latestChanges = [];
 
     /** Key yang tidak disertakan dalam diff */
-    protected array $diffExcludeKeys = ['reviseNotes', 'form_data', 'status'];
+    protected array $diffExcludeKeys = ['form_data', 'status'];
 
     /** Pastikan department tersedia lebih awal */
     protected function beforeFill(): void
@@ -471,6 +472,7 @@ class EditRecruitmentPhase extends EditRecord
     protected function onPhaseStatusChange(int $index, string $newStatus, Get $get, Set $set): void
     {
         $record = $this->getRecord()->refresh();
+        $before = $record->form_data ?? [];
 
         $dbPhases = $record->form_data['phases'] ?? [];
         if (! array_key_exists($index, $dbPhases)) {
@@ -498,6 +500,14 @@ class EditRecruitmentPhase extends EditRecord
             }
 
             $dbPhases = $this->appendReviseLog($dbPhases, $index, $reason);
+            $this->accumulatedChanges[] = [
+                'scope' => 'phase',
+                'phase' => $phaseName,
+                'index' => $index,
+                'field' => 'reviseNotes',
+                'from'  => null,
+                'to'    => $reason,
+            ];
             $set("form_data.phases.$index.reviseNotes", null);
 
             $this->editedIndex      = null;
@@ -510,20 +520,32 @@ class EditRecruitmentPhase extends EditRecord
         }
 
         $phases = $this->applyRules($dbPhases, $index, $newStatus);
-        $phases = $this->sanitizePhases($phases);
 
+// ==== DIFF REAKTIF (untuk detail_change) ====
+        $after = $before;
+        $after['phases'] = $this->sanitizePhases($phases);
+        $diff = $this->diffFormData($before, $after);
+        $this->accumulatedChanges = array_merge($this->accumulatedChanges, $diff);
+
+// ==== SET STATE FORM ====
+        $phases = $this->sanitizePhases($phases);
         foreach ($phases as $i => $p) {
             if (array_key_exists('status', $p)) {
                 $set("form_data.phases.$i.status", $p['status']);
             }
         }
 
-        $saved   = $this->savePhases($phases);
-        $changed = $oldStatus !== $newStatus;
+// ==== SIMPAN ====
+        $saved = $this->savePhases($phases);
+
+// ==== TENTUKAN APAKAH STATUS BERUBAH (TANPA GANTUNG PADA $saved) ====
+        $statusChanged = $this->phasesStatusChanged($dbPhases, $phases);
+        $changed = ($dbPhases[$index]['status'] ?? null) !== $newStatus; // tetap catat perubahan di phase yg diubah
 
         $record->refresh();
 
-        if ($changed && $saved) {
+        if ($statusChanged) {
+            // Toast lokal
             FNotification::make()
                 ->title("{$record->recruitmentRequest->title} Berhasil Diperbaharui")
                 ->body("Perubahan status menjadi {$newStatus}")
@@ -531,12 +553,6 @@ class EditRecruitmentPhase extends EditRecord
                 ->send();
 
             $actor = auth()->user();
-
-//            $recipients = User::role(['HR Manager'])
-//                ->when($actor, fn ($q) => $q->whereKeyNot($actor->getKey()))
-//                ->get();
-
-
             $recipients = self::getRecipients($actor);
 
             Notify::recruitmentActivity(
@@ -555,6 +571,18 @@ class EditRecruitmentPhase extends EditRecord
                 department: $this->department,
             );
         }
+
+    }
+
+    protected function phasesStatusChanged(array $beforePhases, array $afterPhases): bool
+    {
+        $max = max(count($beforePhases), count($afterPhases));
+        for ($i = 0; $i < $max; $i++) {
+            $old = $beforePhases[$i]['status'] ?? null;
+            $new = $afterPhases[$i]['status'] ?? null;
+            if ($old !== $new) return true;
+        }
+        return false;
     }
 
     protected function getRecipients($actor): Collection
@@ -812,24 +840,23 @@ class EditRecruitmentPhase extends EditRecord
             ->send();
 
         $actor = auth()->user();
-
         $recipients = self::getRecipients($actor);
 
-        $changesPayload = array_map(function (array $c) {
+        // gabungkan reaktif + submit
+        $allChanges = array_merge($this->accumulatedChanges, $this->latestChanges);
+
+        $changesPayload = array_map(static function (array $c) {
             return [
-                'updating'  => 'update',
-                'scope'     => $c['scope'],     // 'form_data' | 'phase'
-                'phase'     => $c['phase'],     // null untuk top-level
-                'index'     => $c['index'],     // null untuk top-level
-                'field'     => $c['field'],
-                'oldValue'  => $c['from'],
-                'newValue'  => $c['to'],
+                'updating' => 'update',
+                'scope'    => $c['scope'],
+                'phase'    => $c['phase'],
+                'index'    => $c['index'],
+                'field'    => $c['field'],
+                'oldValue' => $c['from'],
+                'newValue' => $c['to'],
             ];
-        }, $this->latestChanges);
+        }, $allChanges);
 
-
-        dd($changesPayload);
-        // Kirim satu notifikasi dengan kumpulan perubahan
         Notify::recruitmentActivity(
             recipients:    $recipients,
             recruitmentId: (string) $record->getKey(),
@@ -840,11 +867,13 @@ class EditRecruitmentPhase extends EditRecord
             department:    $this->department,
         );
 
-        // reset cache perubahan setelah terkirim
+        // reset buffer
+        $this->accumulatedChanges = [];
         $this->latestChanges = [];
 
         $this->fillForm();
     }
+
 
     protected function getHeaderActions(): array
     {
