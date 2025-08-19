@@ -1,12 +1,11 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\EmailApiController;
 
-Route::get('/ping', function () {
-    return response()->json(['message' => 'pong']);
-});
+Route::get('/ping', fn () => response()->json(['message' => 'pong']));
 
-Route::middleware(['hapi.sign'])->prefix('email')->group(function () {
-    Route::post('notify',  [\App\Http\Controllers\Api\EmailApiController::class, 'notify']);
-    Route::post('approval', [\App\Http\Controllers\Api\EmailApiController::class, 'approval']);
+Route::middleware('hapi.sign')->prefix('email')->group(function () {
+    Route::post('/notify',   [EmailApiController::class, 'notify'])->name('api.email.notify');
+    Route::post('/approval', [EmailApiController::class, 'approval'])->name('api.email.approval');
 });
