@@ -36,8 +36,8 @@ class DatabaseSeeder extends Seeder
             'department_id' => $department->id,
         ]);
         $admin->assignRole('Asmen');
-        $admin->assignRole('Manager');
-        $admin->assignRole('Director');
+//        $admin->assignRole('Manager');
+//        $admin->assignRole('Director');
 
         $tes1 = User::create([
             'id' => (string) Str::uuid(),
