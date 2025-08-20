@@ -35,29 +35,31 @@ class ApprovalResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('status')
-                    ->formatStateUsing(fn($state) => ucfirst($state))
+                Tables\Columns\TextColumn::make('request.title')
+                    ->label('Request Title')
+                    ->alignment(Alignment::Center)
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('request.department.name')
                     ->searchable(),
                 Tables\Columns\IconColumn::make('hrd_approval')
                     ->label('Approval By HRD')
                     ->alignment(Alignment::Center)
+                    ->tooltip(fn($record):string => $record['hrd_decided_at'] ? (date_format($record['hrd_decided_at'], 'd F Y h:i A')) : '')
                     ->boolean(),
-                Tables\Columns\IconColumn::make('chairman_approval')
+                Tables\Columns\IconColumn::make('director_approval')
                     ->label('Approval By Direction')
                     ->alignment(Alignment::Center)
+                    ->tooltip(fn($record):string => $record['director_decided_at'] ? (date_format($record['director_decided_at'], 'd F Y h:i A')) : '')
                     ->boolean(),
-                Tables\Columns\IconColumn::make('is_closed')
-                    ->label('Closed')
-                    ->alignment(Alignment::Center)
-                    ->boolean(),
+                Tables\Columns\TextColumn::make('status')
+                    ->formatStateUsing(fn($state) => ucfirst($state))
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('approved_at')
                     ->since()
                     ->label('Approved At')
                     ->tooltip(fn($record):string => $record['approved_at'] ? (date_format($record['approved_at'], 'd F Y h:i A')) : '')
                     ->alignment(Alignment::Center)
                     ->sortable(),
-                Tables\Columns\TextColumn::make('reason')
-                    ->searchable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -66,14 +68,7 @@ class ApprovalResource extends Resource
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\IconColumn::make('request.status')
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->trueColor('success')
-                    ->falseIcon('heroicon-o-x-circle')
-                    ->falseColor('danger')
-                    ->label('Request Status')
-                    ->alignment(Alignment::Center)
-                    ->searchable(),
+
             ])
             ->filters([
                 //

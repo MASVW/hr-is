@@ -22,7 +22,7 @@ class Notify
     ): void {
         foreach ($recipients as $r) {
             FNotification::make()
-                ->title(self::buildHead($action, $department))
+                ->title(self::buildHead($action, $department, $context))
                 ->body(self::buildBody($action, $recruitmentId, $context, $actorName, $department))
                 ->success()
                 ->sendToDatabase($r, isEventDispatched: true);
@@ -38,12 +38,29 @@ class Notify
         }
     }
 
-    private static function buildHead(string $action, ?string $department): string
+    private static function buildHead(string $action, ?string $department, ?array $ctx): string
     {
+        $val = static function ($v): string {
+            if ($v === null) return '-';
+            if (is_bool($v)) return $v ? 'true' : 'false';
+            if (is_array($v)) return json_encode($v, JSON_UNESCAPED_UNICODE);
+            return (string) $v;
+        };
         $dept = $department ?? '-';
         return match ($action) {
             'phase_status_changed' => sprintf('Pembaharuan Status Tahap Perekrutan Departemen %s', $dept),
             'detail_change'        => sprintf('Pembaharuan Detail Tahap Perekrutan Departemen %s', $dept),
+            'approval'        => sprintf('Pembaharuan Detail Tahap Perekrutan Departemen %s', $dept),
+            'direksi_approval' => sprintf(
+                'Keputusan Direktur untuk %s: %s',
+                $val($ctx['title'] ?? null),
+                $val($ctx['status'] ?? null),
+            ),
+            'hrmanager_approval' => sprintf(
+                'Keputusan HR Manager untuk %s: %s',
+                $val($ctx['title'] ?? null),
+                $val($ctx['status'] ?? null),
+            ),
             default                => sprintf('Pembaharuan Perekrutan Departemen %s', $dept),
         };
     }
@@ -81,6 +98,17 @@ class Notify
                 $dept,
                 $val($ctx['from'] ?? null),
                 $val($ctx['to']   ?? null),
+            ),
+
+            'direksi_approval' => sprintf(
+                'Direksi telah menetapkan keputusan "%s" atas permintaan perekrutan %s.',
+                $val($ctx['status'] ?? null),
+                $val($ctx['title'] ?? null),
+            ),
+            'hrmanager_approval' => sprintf(
+                'HR Manager telah menetapkan keputusan "%s" atas permintaan perekrutan %s.',
+                $val($ctx['status'] ?? null),
+                $val($ctx['title'] ?? null),
             ),
 
             // ganti blok 'detail_change' di Notify::buildBody()
