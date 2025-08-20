@@ -20,9 +20,8 @@ class ApprovalFactory extends Factory
     {
         return [
             'request_id' => null,
-            'status' => $this->faker->randomElement(['approved', 'rejected', 'NA']),
-            'is_closed' => $this->faker->boolean(20),
-            'reason' => $this->faker->optional()->sentence(),
+            'status' => 'NA',
+            'is_closed' => false,
         ];
     }
 }

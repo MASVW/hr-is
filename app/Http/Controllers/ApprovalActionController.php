@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Approval;
+use App\Models\Department;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 
 class ApprovalActionController extends Controller
 {
@@ -21,42 +21,57 @@ class ApprovalActionController extends Controller
 
     private function handleApproval(string $recruitmentId, string $userId, bool $isApproved): RedirectResponse
     {
-        $approval = Approval::where('request_id', $recruitmentId)->firstOrFail();
-        $user = User::findOrFail($userId);
+        // 1) Ambil Approval berdasarkan request_id (harus sama dengan recruitmentId di URL)
+        $approval = Approval::query()
+            ->where('request_id', $recruitmentId)
+            ->firstOrFail();
 
-        $isHrManager = $user->hasRole('HR Manager');
+        // 2) Ambil User berdasar ROUTE KEY (bukan selalu id)
+        $userRouteKey = (new User)->getRouteKeyName(); // biasanya 'id' atau 'uuid'
+        $user = User::query()->where($userRouteKey, $userId)->firstOrFail();
+
+        $isHrManager = $user->hasRole('Manager') && $user->department && $user->department->name === "HUMAN RESOURCE";
         $isChairman  = $user->hasRole('Director');
 
         if ($isHrManager) {
             if (!is_null($approval->hrd_approval)) {
                 return redirect()->to(config('app.url'))
-                    ->with('status', "Approval sudah {$approval->status}.");
+                    ->with('status', "Keputusan HR sudah {$this->statusText($approval->hrd_approval)}.");
             }
             $approval->forceFill([
-                'hrd_approval'               => $isApproved,
-                'hrd_decided_at'       => now(),
+                'hrd_approval'   => $isApproved,
+                'hrd_decided_at' => now(),
             ])->save();
         }
 
         if ($isChairman) {
-            if (!is_null($approval->chairman_approval)) {
+            if (!is_null($approval->chairman_approval ?? $approval->director_approval)) {
                 return redirect()->to(config('app.url'))
-                    ->with('status', "Approval sudah {$approval->status}.");
+                    ->with('status', "Keputusan Direktur sudah {$this->statusText($approval->chairman_approval ?? $approval->director_approval)}.");
             }
             $approval->forceFill([
-                'director_approval'               => $isApproved,
-                'director_decided_at'  => now(),
+                'director_approval'   => $isApproved,
+                'director_decided_at' => now(),
             ])->save();
         }
 
-        if (!is_null($approval->hrd_approval) && !is_null($approval->chairman_approval)) {
+        // 4) Jika dua pihak sudah memutuskan → set status akhir
+        $hrDone  = !is_null($approval->hrd_approval);
+        $dirDone = !is_null($approval->director_approval ?? null);
+
+        if ($hrDone && $dirDone) {
             $approval->forceFill([
-                'status'     => $approval->hrd_approval && $approval->chairman_approval ? 'approved' : 'rejected',
-                'approved_at'=> now(),
+                'status'      => ($approval->hrd_approval && $approval->director_approval) ? 'approved' : 'rejected',
+                'approved_at' => now(),
             ])->save();
         }
 
         $message = $isApproved ? 'Approval disetujui.' : 'Approval tidak disetujui.';
         return redirect()->to(config('app.url'))->with('status', $message);
+    }
+
+    private function statusText(?bool $v): string
+    {
+        return $v ? 'disetujui' : 'ditolak';
     }
 }

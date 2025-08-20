@@ -35,8 +35,9 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('password'),
             'department_id' => $department->id,
         ]);
-        $admin->assignRole('Team Leader');
+        $admin->assignRole('Asmen');
         $admin->assignRole('Manager');
+        $admin->assignRole('Director');
 
         $tes1 = User::create([
             'id' => (string) Str::uuid(),
@@ -50,26 +51,26 @@ class DatabaseSeeder extends Seeder
 
         $tes2 = User::create([
             'id' => (string) Str::uuid(),
-            'name' => 'Tes Team Leader HR',
+            'name' => 'Tes Asmen HR',
             'email' => 'tes2@gmail.com',
             'password' => Hash::make('password'),
             'department_id' => $departmentHR->id,
         ]);
-        $tes2->assignRole('Team Leader');
+        $tes2->assignRole('Asmen');
 
         $tes3 = User::create([
             'id' => (string) Str::uuid(),
-            'name' => 'Tes Team Leader HR 2',
+            'name' => 'Tes SPV HR 2',
             'email' => 'tes3@gmail.com',
             'password' => Hash::make('password'),
             'department_id' => $departmentHR->id,
         ]);
-        $tes3->assignRole('Team Leader');
+        $tes3->assignRole('SPV');
 
         $tes4 = User::create([
             'id' => (string) Str::uuid(),
             'name' => 'Tes Manager HR 4',
-            'email' => 'tes4@gmail.com',
+            'email' => 'samuelzakaria3103@outlook.com',
             'password' => Hash::make('password'),
             'department_id' => $departmentHR->id,
         ]);
@@ -85,11 +86,11 @@ class DatabaseSeeder extends Seeder
         $admin->assignRole('Staff');
 
         $roles = Role::pluck('name')->toArray();
-        User::factory(10)->create()->each(function ($user) use ($roles) {
+        User::factory(2)->create()->each(function ($user) use ($roles) {
             $user->assignRole(fake()->randomElement($roles));
         });
 
-        for ($i = 0; $i < 100; $i++){
+        for ($i = 0; $i < 3; $i++){
             //DONE
             $approval = Approval::factory()->create();
             //DONE

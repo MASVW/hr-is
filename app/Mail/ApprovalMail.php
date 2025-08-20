@@ -27,6 +27,12 @@ class ApprovalMail extends Mailable implements ShouldQueue
     public function build()
     {
         return $this->subject($this->subjectLine)
-            ->markdown('mail.approval');
+            ->markdown('mail.approval')
+            ->withSymfonyMessage(function ($message) {
+                $path = public_path('img/logo_iag.png');
+                if (is_file($path)) {
+                    $message->embedFromPath($path, 'logo_iag', 'image/png');
+                }
+            });
     }
 }

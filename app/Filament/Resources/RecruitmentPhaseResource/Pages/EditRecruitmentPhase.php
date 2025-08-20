@@ -590,15 +590,13 @@ class EditRecruitmentPhase extends EditRecord
     protected function getRecipients($actor): Collection
     {
         return User::where(function ($query) {
-            // Manager dari HR berdasarkan department ID
             $query->whereHas('roles', function ($q) {
-                $q->whereIn('name', ['Manager', 'Team Leader']);
+                $q->whereIn('name', ['Manager', 'Asmen']);
             })->where('department_id', $this->hrDepartmentId);
         })
             ->orWhere(function ($query) {
-                // Team Leader dari department yang sama
                 $query->whereHas('roles', function ($r) {
-                    $r->where('name', 'Team Leader');
+                    $r->whereIn('name', ['Manager', 'Asmen']);
                 })->where('department_id', $this->departmentId);
             })
             ->when($actor, function ($q) use ($actor) {
@@ -610,15 +608,13 @@ class EditRecruitmentPhase extends EditRecord
     protected function getRecipientsEmail($actor): array
     {
         return User::where(function ($query) {
-            // Manager dari HR berdasarkan department ID
             $query->whereHas('roles', function ($q) {
-                $q->whereIn('name', ['Manager', 'Team Leader']);
+                $q->whereIn('name', ['Manager', 'Asmen']);
             })->where('department_id', $this->hrDepartmentId);
         })
             ->orWhere(function ($query) {
-                // Team Leader dari department yang sama
                 $query->whereHas('roles', function ($r) {
-                    $r->where('name', 'Team Leader');
+                    $r->whereIn('name', ['Manager', 'Asmen']);
                 })->where('department_id', $this->departmentId);
             })
             ->when($actor, function ($q) use ($actor) {

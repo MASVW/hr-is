@@ -28,10 +28,16 @@ class RoleSeeder extends Seeder
         Permission::create(['name' => 'read form']);
         Permission::create(['name' => 'delete form']);
 
+        Permission::create(['name' => 'su']);
+
 
         $r1 = Role::create(['name' => 'Team Leader']);
         $r2 = Role::create(['name' => 'Staff']);
-        $r3 = Role::create(['name' => 'Manager']);
+        $r3 = Role::create(['name' => 'Asmen']);
+        $r4 = Role::create(['name' => 'Manager']);
+        $r5 = Role::create(['name' => 'Director']);
+        $r6 = Role::create(['name' => 'SPV']);
+
 
         $r1->givePermissionTo('read');
         $r1->givePermissionTo('create');
@@ -42,8 +48,21 @@ class RoleSeeder extends Seeder
         $r2->givePermissionTo('edit');
 
         $r3->givePermissionTo('read');
-        $r3->givePermissionTo('edit');
+        $r3->givePermissionTo('read');
+        $r3->givePermissionTo('create');
+        $r3->givePermissionTo('create');
 
-        Role::create(['name' => 'Super-Admin']);
+        $r4->givePermissionTo('edit');
+        $r4->givePermissionTo('edit');
+        $r4->givePermissionTo('delete');
+        $r4->givePermissionTo('delete');
+
+        $r5->givePermissionTo('read');
+        $r5->givePermissionTo('edit');
+
+        $r6->givePermissionTo('read');
+
+        $superAdmin = Role::create(['name' => 'Super-Admin']);
+        $superAdmin->givePermissionTo('su');
     }
 }

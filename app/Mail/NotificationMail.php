@@ -18,8 +18,8 @@ class NotificationMail extends Mailable implements ShouldQueue
      */
     public function __construct(
         public string $subjectLine,
-        public string $greeting,
-        public string $footer,
+        public ?string $greeting,
+        public ?string $footer,
         public string $messageLine = '',
         public ?string $actionText = null,
         public ?string $actionUrl = null,

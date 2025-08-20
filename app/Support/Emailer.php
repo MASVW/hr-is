@@ -4,24 +4,21 @@ namespace App\Support;
 
 use App\Mail\ApprovalMail;
 use App\Mail\NotificationMail;
-use App\Models\Approval;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
+use InvalidArgumentException;
 
 class Emailer
 {
-    /**
-     * Kirim email notifikasi umum.
-     */
     public static function notify(
         User|array|string $to,
         string $subject,
         string $message,
         ?string $actionText = null,
-        ?string $actionUrl = null): void
-    {
+        ?string $actionUrl = null
+    ): void {
         Mail::to($to)->queue(new NotificationMail(
             subjectLine: $subject,
             greeting: __('emails.greeting', [], 'id'),
@@ -33,34 +30,48 @@ class Emailer
     }
 
     /**
-     * Buat approval request + kirim email dengan tombol (approve/reject).
+     * Kirim email approval.
+     * - recruitmentId diambil dari $approvable->getRouteKey() bila tidak diberikan.
+     * - userId diambil dari $approver (jika instance User) bila tidak diberikan.
      */
     public static function approval(
         User|array|string $approver,
-        string $type,
+        string $type,            // gunakan bila Mailable/DB butuh; kalau tidak, hilangkan saja
         Model $approvable,
         string $subject,
         string $message,
         array $context,
-        string $recruitmentId,
-        string $userId,
+        ?string $recruitmentId = null,
+        ?string $userId = null,
         ?int $expiresIn = null,
     ): void {
-        $approveUrl = self::generateApprovalUrl('approvals.approve', $recruitmentId, $userId, $expiresIn);
-        $rejectUrl  = self::generateApprovalUrl('approvals.reject', $recruitmentId, $userId, $expiresIn);
+        // Derive recruitmentId dari model jika kosong
+        $derivedRecruitmentId = $recruitmentId ?: (string) ($approvable->getRouteKey() ?? $approvable->getKey());
+
+        // Derive userId dari approver kalau dia instance User
+        $derivedUserId = $userId;
+        if ($derivedUserId === null && $approver instanceof User) {
+            $derivedUserId = (string) ($approver->getRouteKey() ?? $approver->getKey());
+        }
+
+        if ($derivedUserId === null || $derivedUserId === '') {
+            throw new InvalidArgumentException('userId wajib diisi jika $approver bukan instance User.');
+        }
+
+        $approveUrl = self::generateApprovalUrl('approvals.approve', $derivedRecruitmentId, $derivedUserId, $expiresIn);
+        $rejectUrl  = self::generateApprovalUrl('approvals.reject',  $derivedRecruitmentId, $derivedUserId, $expiresIn);
 
         Mail::to($approver)->queue(new ApprovalMail(
             subjectLine: $subject,
             greeting: __('emails.greeting', [], 'id'),
             messageLine: $message,
+            // Kalau ingin memakai $context di template, tambahkan properti/argumen di ApprovalMail
+            // context: $context,
             approveUrl: $approveUrl,
             rejectUrl:  $rejectUrl,
         ));
     }
 
-    /**
-     * Generate approval/reject URL (signed/temporary).
-     */
     private static function generateApprovalUrl(string $route, string $recruitmentId, string $userId, ?int $expiresIn): string
     {
         $params = ['recruitmentId' => $recruitmentId, 'userId' => $userId];
