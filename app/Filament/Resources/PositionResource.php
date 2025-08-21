@@ -2,9 +2,9 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\LocationResource\Pages;
-use App\Filament\Resources\LocationResource\RelationManagers;
-use App\Models\Location;
+use App\Filament\Resources\PositionResource\Pages;
+use App\Filament\Resources\PositionResource\RelationManagers;
+use App\Models\Position;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -13,20 +13,19 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
-class LocationResource extends Resource
+class PositionResource extends Resource
 {
-    protected static ?string $model = Location::class;
+    protected static ?string $model = Position::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
+                Forms\Components\TextInput::make('positionName')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\Textarea::make('address')
-                    ->columnSpanFull(),
             ]);
     }
 
@@ -34,11 +33,8 @@ class LocationResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->label("Nama Kantor")
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('address')
-                    ->label("Lokasi Kantor")
+                Tables\Columns\TextColumn::make('positionName')
+                    ->label('Name')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Tanggal Dibuat')
@@ -75,9 +71,9 @@ class LocationResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListLocations::route('/'),
-            'create' => Pages\CreateLocation::route('/create'),
-            'edit' => Pages\EditLocation::route('/{record}/edit'),
+            'index' => Pages\ListPositions::route('/'),
+            'create' => Pages\CreatePosition::route('/create'),
+            'edit' => Pages\EditPosition::route('/{record}/edit'),
         ];
     }
 }

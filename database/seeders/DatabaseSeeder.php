@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            PositionSeeder::class,
             DepartmentSeeder::class,
             RoleSeeder::class,
             LocationSeeder::class,
@@ -76,14 +77,32 @@ class DatabaseSeeder extends Seeder
         ]);
         $tes4->assignRole('Manager');
 
-        $admin = User::create([
+        $admin1 = User::create([
             'id' => (string) Str::uuid(),
             'name' => 'HR Staff',
             'email' => 'hr@gmail.com',
             'password' => Hash::make('password'),
             'department_id' => $departmentHR->id,
         ]);
-        $admin->assignRole('Staff');
+        $admin1->assignRole('Staff');
+
+        $admin2 = User::create([
+            'id' => (string) Str::uuid(),
+            'name' => 'HR Staff',
+            'email' => 'hr2@gmail.com',
+            'password' => Hash::make('password'),
+            'department_id' => $departmentHR->id,
+        ]);
+        $admin2->assignRole('Staff');
+
+        $admin3 = User::create([
+            'id' => (string) Str::uuid(),
+            'name' => 'HR Staff',
+            'email' => 'hr3@gmail.com',
+            'password' => Hash::make('password'),
+            'department_id' => $departmentHR->id,
+        ]);
+        $admin3->assignRole('Staff');
 
         $roles = Role::pluck('name')->toArray();
         User::factory(2)->create()->each(function ($user) use ($roles) {

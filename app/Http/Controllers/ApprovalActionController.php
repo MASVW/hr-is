@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Livewire\AssignComponent;
 use App\Models\Approval;
 use App\Models\Department;
 use App\Models\RecruitmentRequest;
 use App\Models\User;
 use App\Support\Notify;
 use Illuminate\Http\RedirectResponse;
+use Livewire\Livewire;
 
 class ApprovalActionController extends Controller
 {
@@ -15,12 +17,10 @@ class ApprovalActionController extends Controller
     {
         return $this->handleApproval($recruitmentId, $userId, true);
     }
-
     public function reject(string $recruitmentId, string $userId): RedirectResponse
     {
         return $this->handleApproval($recruitmentId, $userId, false);
     }
-
     private function handleApproval(string $recruitmentId, string $userId, bool $isApproved): RedirectResponse
     {
         // 1) Ambil Approval berdasarkan request_id (harus sama dengan recruitmentId di URL)
@@ -30,6 +30,7 @@ class ApprovalActionController extends Controller
 
         $request = RecruitmentRequest::with('requester', 'department')->findOrFail($recruitmentId);
         $requester = $request->requester;
+        $assigned = is_null($request->pic_id);
 
         // 2) Ambil User berdasar ROUTE KEY (bukan selalu id)
         $userRouteKey = (new User)->getRouteKeyName(); // biasanya 'id' atau 'uuid'
@@ -40,6 +41,9 @@ class ApprovalActionController extends Controller
 
         if ($isHrManager) {
             if (!is_null($approval->hrd_approval)) {
+                if($assigned){
+                    return redirect()->to("/approvals/{$recruitmentId}/pic/approve");
+                }
                 return redirect()->to(config('app.url'))
                     ->with('status', "Keputusan HR sudah {$this->statusText($approval->hrd_approval)}.");
             }
@@ -98,6 +102,10 @@ class ApprovalActionController extends Controller
         );
 
         $message = $isApproved ? 'Approval disetujui.' : 'Approval tidak disetujui.';
+
+        if($isHrManager && $isApproved){
+            return redirect()->to("/approvals/{$recruitmentId}/pic/approve");
+        }
         return redirect()->to(config('app.url'))->with('status', $message);
     }
 

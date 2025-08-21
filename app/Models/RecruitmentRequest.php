@@ -19,6 +19,7 @@ class RecruitmentRequest extends Model
         'form_data' => 'array',
     ];
     protected $fillable = [
+        'pic',
         'phase_id',
         'status',
         'title',
@@ -56,6 +57,11 @@ class RecruitmentRequest extends Model
     public function phase(): BelongsTo
     {
         return $this->belongsTo(RecruitmentPhase::class, 'phase_id');
+    }
+
+    public function pic(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'pic_id');
     }
 }
 

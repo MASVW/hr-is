@@ -46,6 +46,10 @@ class RecruitmentRequestResource extends Resource
                     ->label('Department')
                     ->searchable()
                     ->alignment(Alignment::Center),
+                Tables\Columns\TextColumn::make('pic.name')
+                    ->label('Person In Charge')
+                    ->badge()
+                    ->alignment(Alignment::Center),
                 Tables\Columns\TextColumn::make('recruitmentPhase')
                     ->label('Dalam Perkembangan')
                     ->badge()
