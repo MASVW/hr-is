@@ -15,8 +15,10 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->enum('status', ['approved', 'rejected', 'NA']);
             $table->boolean('hrd_approval')->nullable(); //apakah sudah di approve dari sisi hrd
-            $table->boolean('chairman_approval')->nullable(); //apakah sudah di approve dari sisi stakeholder/direksi
+            $table->boolean('director_approval')->nullable(); //apakah sudah di approve dari sisi stakeholder/direksi
             $table->boolean('is_closed')->nullable(); //apakah direksi ataupun HR Manager memiliki revisi
+            $table->datetime('hrd_decided_at')->nullable();
+            $table->datetime('director_decided_at')->nullable();
             $table->datetime('approved_at')->nullable();
             $table->string('reason')->nullable();
             $table->timestamps();

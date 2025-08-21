@@ -11,16 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('notifications', function (Blueprint $table) {
+        Schema::create('positions', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->uuid('user_id');
-            $table->string('message');
-            $table->boolean('is_read')->default(false);
+            $table->string('positionName');
             $table->timestamps();
-
-            $table->foreign('user_id')->references('id')->on('users');
         });
-
     }
 
     /**
@@ -28,6 +23,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('notifications');
+        Schema::dropIfExists('positions');
     }
 };

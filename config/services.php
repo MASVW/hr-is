@@ -31,4 +31,9 @@ return [
         ],
     ],
 
+    'hapi' => [
+        'shared_secret' => env('HAPI_SHARED_SECRET'),
+        'max_skew'      => env('HAPI_MAX_SKEW', 300),
+    ],
+
 ];

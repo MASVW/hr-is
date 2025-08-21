@@ -3,14 +3,12 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Admin\Resources\RecruitmentPhaseResource\Pages;
-use App\Filament\Admin\Resources\RecruitmentPhaseResource\RelationManagers;
 use App\Models\RecruitmentPhase;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\Alignment;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
-use PhpParser\Node\Scalar\String_;
 
 class RecruitmentPhaseResource extends Resource
 {
@@ -23,11 +21,12 @@ class RecruitmentPhaseResource extends Resource
     {
         return false;
     }
+
     protected static ?int $navigationSort = 3;
 
     public static function table(Table $table): Table
     {
-    return $table
+        return $table
             ->columns([
                 Tables\Columns\TextColumn::make('request.title')
                     ->alignment(Alignment::Left)
@@ -39,8 +38,8 @@ class RecruitmentPhaseResource extends Resource
                     ->label('Departemen'),
                 Tables\Columns\TextColumn::make('form_data')
                     ->label('Dalam Tahap')
-                        ->searchable()
-                        ->sortable()
+                    ->searchable()
+                    ->sortable()
                     ->alignment(Alignment::Center)
                     ->formatStateUsing(function ($record) {
                         $phases = $record->form_data['phases'] ?? [];
@@ -59,8 +58,8 @@ class RecruitmentPhaseResource extends Resource
                     ->trueColor('success')
                     ->falseColor('warning')
                     ->alignment(Alignment::Center)
-                    ->tooltip(fn(Model $record):string => ucfirst($record->status))
-                    ->getStateUsing(fn ($record) => $record->status === 'approved'),
+                    ->tooltip(fn(Model $record): string => ucfirst($record->status))
+                    ->getStateUsing(fn($record) => $record->status === 'approved'),
                 Tables\Columns\TextColumn::make('finishAt')
                     ->dateTime()
                     ->sortable()
@@ -68,7 +67,7 @@ class RecruitmentPhaseResource extends Resource
                 Tables\Columns\TextColumn::make('started_at')
                     ->label('Dibuat Pada')
                     ->since()
-                    ->tooltip(fn($record):string => date_format($record['started_at'], 'd F Y h:i A'))
+                    ->tooltip(fn($record): string => $record->started_at?->format('d F Y h:i A'))
                     ->alignment(Alignment::Center)
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
@@ -85,14 +84,29 @@ class RecruitmentPhaseResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
-                    ->hiddenLabel(),
-            ]);
+                    ->hiddenLabel()
+                    ->disabled(fn(Model $record): bool => collect($record->form_data['phases'] ?? [])
+                        ->contains(fn($phase) => ($phase['status'] ?? null) === 'progress' && (($phase['name'] ?? '') === 'Requesting' || ($phase['name'] ?? '') === 'Approval by Stakeholder')
+                    ))
+            ])
+            ->recordUrl(fn(Model $record) => collect($record->form_data['phases'] ?? [])
+                ->contains(fn($phase) => ($phase['status'] ?? null) === 'progress' && (($phase['name'] ?? '') === 'Requesting' || ($phase['name'] ?? '') === 'Approval by Stakeholder'))
+                ? null // row tidak bisa diklik
+                : static::getUrl('edit', ['record' => $record])
+            );
     }
+
     public static function getRelations(): array
     {
         return [
             //
         ];
+    }
+
+    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        return parent::getEloquentQuery()
+            ->with(['recruitmentRequest.department']);
     }
 
     public static function getPages(): array
