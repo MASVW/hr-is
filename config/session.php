@@ -214,5 +214,6 @@ return [
     */
 
     'partitioned' => env('SESSION_PARTITIONED_COOKIE', false),
+    'block'  => env('SESSION_BLOCK', false),
 
 ];

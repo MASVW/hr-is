@@ -1,0 +1,48 @@
+# app.yaml (service default) — Laravel web di App Engine Standard Gen2
+runtime: php84
+entrypoint: serve public/index.php  # Laravel ada di public/index.php
+
+# Skala & resource (opsional, sesuaikan kebutuhan)
+instance_class: F2
+automatic_scaling:
+  max_concurrent_requests: 50
+  min_instances: 0
+  max_instances: 10
+
+env_variables:
+  APP_ENV: production
+  APP_DEBUG: 'false'
+  APP_URL: https://YOUR_DOMAIN
+  LOG_CHANNEL: stderr
+  LOG_LEVEL: info
+
+  # Hanya /tmp yang writable di Standard; hindari driver "file"
+  APP_STORAGE: /tmp
+  VIEW_COMPILED_PATH: /tmp
+  CACHE_DRIVER: redis
+  SESSION_DRIVER: redis
+  QUEUE_CONNECTION: redis
+
+  # Redis (Memorystore) — isi IP privat & kredensial Anda
+  REDIS_CLIENT: phpredis
+  REDIS_HOST: 10.0.0.3
+  REDIS_PORT: '6379'
+  REDIS_PASSWORD: ''
+
+  # Broadcasting — jika nantinya pakai Reverb
+  BROADCAST_CONNECTION: reverb
+
+  # Trust load balancer / proxy
+  TRUSTED_PROXIES: '**'
+
+# Akses ke VPC (Memorystore/Cloud SQL Private IP, dll)
+# Buat connector lebih dulu, lalu isi name di bawah:
+vpc_access_connector:
+  name: projects/PROJECT_ID/locations/REGION/connectors/CONNECTOR_NAME
+  egress_setting: private-ranges-only  # atau all-traffic jika memang perlu
+
+# (Opsional) Jika pakai Cloud SQL via Public IP (Unix socket)
+# GAE Standard akan menggunakan Cloud SQL Auth Proxy via Unix socket.
+# Isi INSTANCE_CONNECTION_NAME Anda: PROJECT:REGION:INSTANCE
+beta_settings:
+  cloud_sql_instances: PROJECT:REGION:INSTANCE
