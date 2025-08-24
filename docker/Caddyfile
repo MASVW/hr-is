@@ -10,8 +10,13 @@ handle @assets {
     header Cache-Control "public, max-age=31536000, immutable"
 }
 
-@reverb path_regexp reverb ^/app/.*$
-reverse_proxy @reverb 127.0.0.1:6001
+# REST API Reverb (server → Reverb): /apps/*
+@reverb_api path_regexp reverb_api ^/apps/.*$
+reverse_proxy @reverb_api 127.0.0.1:6001
+
+# WebSocket (browser → Reverb): /app/*   (catat: singular)
+@reverb_ws path_regexp reverb_ws ^/app/.*$
+reverse_proxy @reverb_ws 127.0.0.1:6001
 
 php_fastcgi 127.0.0.1:9000
 file_server

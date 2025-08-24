@@ -16,15 +16,8 @@ php artisan package:discover --ansi || true
 if [ -n "${APP_KEY:-}" ]; then
   php artisan storage:link || true
 
-  # Clear dulu agar aman
-  php artisan config:clear || true
-  php artisan route:clear  || true
-  php artisan view:clear   || true
-
-  # Re-cache seperlunya (hindari route:cache jika masih ada Closure)
-  php artisan config:cache || true
-  # php artisan route:cache  || true
-  php artisan view:cache   || true
+  php artisan optimize:clear || true
+  php artisan optimize || true
 fi
 
 # 5) Kembalikan izin ke user web

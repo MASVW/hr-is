@@ -19,7 +19,7 @@ class RecruitmentRequest extends Model
         'form_data' => 'array',
     ];
     protected $fillable = [
-        'pic',
+        'pic_id',
         'phase_id',
         'status',
         'title',

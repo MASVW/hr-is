@@ -5,7 +5,9 @@ namespace App\Filament\Resources;
 use App\Filament\Admin\Resources\RecruitmentRequestResource\Pages;
 use App\Filament\Admin\Resources\RecruitmentRequestResource\RelationManagers;
 use App\Models\RecruitmentRequest;
-use App\Tables\Columns\DetailViewer;
+use App\Models\User; // ⬅️ tambahkan
+use Filament\Forms;  // ⬅️ tambahkan
+use Filament\Notifications\Notification; // (opsional) untuk notifikasi
 use Filament\Resources\Resource;
 use Filament\Support\Enums\Alignment;
 use Filament\Tables;
@@ -34,22 +36,28 @@ class RecruitmentRequestResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(null)                // ⬅️ pastikan klik baris tidak navigate
+            ->recordAction('assign_pic')     // ⬅️ klik baris = buka modal assign PIC
             ->columns([
                 Tables\Columns\TextColumn::make('requester.name')
                     ->label('Diminta Oleh')
                     ->searchable(),
+
                 Tables\Columns\TextColumn::make('title')
                     ->label('Judul')
                     ->alignment(Alignment::Center)
                     ->searchable(),
+
                 Tables\Columns\TextColumn::make('department.name')
                     ->label('Department')
                     ->searchable()
                     ->alignment(Alignment::Center),
+
                 Tables\Columns\TextColumn::make('pic.name')
                     ->label('Person In Charge')
                     ->badge()
                     ->alignment(Alignment::Center),
+
                 Tables\Columns\TextColumn::make('recruitmentPhase')
                     ->label('Dalam Perkembangan')
                     ->badge()
@@ -61,8 +69,10 @@ class RecruitmentRequestResource extends Resource
                         );
                         $names = array_column($progressPhases, 'name');
                         return $names;
-                    })->alignment(Alignment::Center)
+                    })
+                    ->alignment(Alignment::Center)
                     ->tooltip("Tekan untuk melihat detail"),
+
                 Tables\Columns\IconColumn::make('approval.status')
                     ->label('Status Approval')
                     ->boolean()
@@ -71,8 +81,9 @@ class RecruitmentRequestResource extends Resource
                     ->trueColor('success')
                     ->falseColor('danger')
                     ->alignment(Alignment::Center)
-                    ->tooltip(fn(Model $record):string => ucfirst($record->approval->status))
+                    ->tooltip(fn(Model $record): string => ucfirst($record->approval->status))
                     ->getStateUsing(fn ($record) => $record->approval->status === 'approved'),
+
                 Tables\Columns\IconColumn::make('approval.hrd_approval')
                     ->label('Disetujui HR Manager')
                     ->boolean()
@@ -81,8 +92,9 @@ class RecruitmentRequestResource extends Resource
                     ->trueColor('success')
                     ->falseColor('danger')
                     ->alignment(Alignment::Center)
-                    ->tooltip(fn(Model $record):string => ucfirst($record->approval->hrd_approval))
+                    ->tooltip(fn(Model $record): string => ucfirst($record->approval->hrd_approval))
                     ->toggleable(isToggledHiddenByDefault: true),
+
                 Tables\Columns\IconColumn::make('approval.chairman_approval')
                     ->label('Disetujui Direksi')
                     ->boolean()
@@ -91,13 +103,15 @@ class RecruitmentRequestResource extends Resource
                     ->trueColor('success')
                     ->falseColor('danger')
                     ->alignment(Alignment::Center)
-                    ->tooltip(fn(Model $record):string => ucfirst($record->approval->chairman_approval))
+                    ->tooltip(fn(Model $record): string => ucfirst($record->approval->chairman_approval))
                     ->toggleable(isToggledHiddenByDefault: true),
+
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('Terakhir Diperbarui')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat Pada')
                     ->dateTime()
@@ -107,22 +121,59 @@ class RecruitmentRequestResource extends Resource
             ->filters([
                 //
             ])
-            ->recordAction('view_phases')
             ->actions([
+                Tables\Actions\Action::make('assign_pic')
+                    ->label('Assign PIC')
+                    ->icon('heroicon-o-user-plus')
+                    ->modalHeading('Siapa yang akan handle permintaan ini?')
+                    ->modalDescription('Pilih staf HR yang akan menjadi PIC untuk permintaan ini.')
+                    ->modalSubmitActionLabel('Simpan')
+                    ->modalCancelActionLabel('Batal')
+                    ->fillForm(fn (RecruitmentRequest $record) => [
+                        'pic_id' => $record->pic_id,
+                    ])
+                    ->form([
+                         Forms\Components\Select::make('pic_id')
+                             ->label('Pilih Staff HR')
+                             ->required()
+                             ->searchable()
+                             ->preload()
+                             ->options(fn () => User::role('Staff')
+                                 ->whereHas('department', fn ($q) => $q->where('name', 'HUMAN RESOURCE'))
+                                 ->orderBy('name')->pluck('name', 'id')->toArray()
+                             ),
+                    ])
+                    ->action(function (array $data, RecruitmentRequest $record): void {
+                        $record->update([
+                            'pic_id' => $data['pic_id'],
+                        ]);
+
+                        // (opsional) Notifikasi sukses
+                        Notification::make()
+                            ->title('PIC berhasil ditetapkan')
+                            ->success()
+                            ->send();
+                    }),
+
                 Tables\Actions\Action::make('view_phases')
                     ->hiddenLabel()
                     ->icon('heroicon-o-eye')
                     ->modal()
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Tutup')
-                    ->modalContent(fn($record) => view('livewire.wizard-modal', ['record' => $record->recruitmentPhase]))
+                    ->modalContent(fn ($record) => view('livewire.wizard-modal', [
+                        'record' => $record->recruitmentPhase,
+                    ])),
             ]);
     }
 
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {
         return parent::getEloquentQuery()
-            ->with(['recruitmentPhase', 'recruitmentApproval']);
+            // bagusnya eager load relasi yang dipakai di tabel supaya hemat query:
+            ->with(['recruitmentPhase', 'approval', 'pic', 'department', 'requester']);
+        // catatan: kamu di kode awal pakai 'recruitmentApproval',
+        // tapi di kolomnya akses $record->approval — pastikan namanya konsisten.
     }
 
     public static function getRelations(): array

@@ -1,29 +1,27 @@
 import Echo from 'laravel-echo';
-import Pusher from 'pusher-js';
 
-window.Pusher = Pusher;
-
-const wsHost  = import.meta.env.VITE_REVERB_HOST ?? '127.0.0.1';
-const wsPort  = Number(import.meta.env.VITE_REVERB_PORT ?? 8080);
-const scheme  = import.meta.env.VITE_REVERB_SCHEME ?? 'http';
-const forceTLS = scheme === 'https';
-const csrf    = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+const key      = import.meta.env.VITE_REVERB_APP_KEY;
+const wsHost   = import.meta.env.VITE_REVERB_HOST || window.location.hostname;
+// Di belakang ada Caddy/Cloud Run dengan TLS; browser bicara 80/443
+const wsPort   = 80;
+const wssPort  = 443;
+const forceTLS = window.location.protocol === 'https:';
+const csrf     = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
 
 export const echo = new Echo({
     broadcaster: 'reverb',
-    key: import.meta.env.VITE_REVERB_APP_KEY,
+    key,
     wsHost,
     wsPort,
-    wssPort: wsPort,
+    wssPort,
     forceTLS,
     enabledTransports: ['ws', 'wss'],
-
     authEndpoint: '/broadcasting/auth',
     withCredentials: true,
     auth: { headers: { 'X-CSRF-TOKEN': csrf } },
 });
 
 try {
-    echo.connector.pusher.connection.bind('state_change', s => console.log('[Reverb] state:', s));
-    echo.connector.pusher.connection.bind('error', e => console.error('[Reverb] error:', e));
+    echo.connector.connection.bind('state_change', s => console.log('[Reverb] state:', s));
+    echo.connector.connection.bind('error', e => console.error('[Reverb] error:', e));
 } catch {}

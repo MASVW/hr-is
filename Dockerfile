@@ -77,7 +77,7 @@ COPY . /var/www/html
 
 # Vendor & build assets
 COPY --from=vendor /app/vendor /var/www/html/vendor
-COPY --from=front  /app/public/build /var/www/html/public/build
+COPY --from=front  /app/dist /var/www/html/public/build
 
 # Pastikan caddy ada di lokasi yang supervisor pakai
 COPY --from=caddybin /usr/bin/caddy /usr/bin/caddy
