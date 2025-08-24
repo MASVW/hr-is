@@ -62,6 +62,7 @@ class RecruitmentRequestFactory extends Factory
                     'jumlahKaryawan' => 2,
                     'urgency' => 'Urgent',
                     'deskripsiPekerjaan' => 'Melakukan pencatatan dan pelaporan keuangan perusahaan',
+                    'deskripsiPekerjaanKhusus' => 'Melakukan pencatatan dan pelaporan keuangan perusahaan dengan secara detail pada bagian admin ini adalah testing untuk teks khusus',
                 ],
                 'kompensasi' => [
                     'gaji' => 6000000,
