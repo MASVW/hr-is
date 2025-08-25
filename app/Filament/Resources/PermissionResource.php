@@ -5,11 +5,13 @@ namespace App\Filament\Resources;
 use App\Filament\Admin\Resources\PermissionResource\Pages;
 use App\Filament\Admin\Resources\PermissionResource\RelationManagers;
 use App\Models\Permission;
+use App\Support\AccessHelper;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class PermissionResource extends Resource
 {
@@ -21,6 +23,28 @@ class PermissionResource extends Resource
 
     protected static ?string $activeNavigationIcon = 'heroicon-s-shield-exclamation';
     protected static ?int $navigationSort = 7;
+
+    public static function canAccess(): bool
+    {
+        return AccessHelper::canAccessHR();
+    }
+    public static function canView(Model $record): bool
+    {
+        return AccessHelper::canViewHR();
+    }
+    public static function canEdit(Model $record): bool
+    {
+        return AccessHelper::canEditHR();
+    }
+    public static function canCreate(): bool
+    {
+        return AccessHelper::canCreateHR();
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return AccessHelper::canDeleteHR();
+    }
 
     public static function form(Form $form): Form
     {

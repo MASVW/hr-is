@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Models\RecruitmentRequest;
 use App\Models\User;
 
+use App\Support\AccessHelper;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -28,8 +29,26 @@ class RecruitmentRequestResource extends Resource
     protected static ?string $activeNavigationIcon = 'fluentui-branch-request-20';
     protected static ?int $navigationSort = 2;
 
-    public static function canCreate(): bool { return false; }
-    public static function canEdit(Model $record): bool { return false; }
+    public static function canAccess(): bool
+    {
+        return AccessHelper::canAccessHR();
+    }
+    public static function canView(Model $record): bool
+    {
+        return AccessHelper::canViewHR();
+    }
+    public static function canEdit(Model $record): bool
+    {
+        return AccessHelper::canEditHR();
+    }
+    public static function canDelete(Model $record): bool
+    {
+        return AccessHelper::canDeleteHR();
+    }
+    public static function canCreate(): bool
+    {
+        return false;
+    }
 
     public static function table(Table $table): Table
     {
@@ -187,6 +206,7 @@ class RecruitmentRequestResource extends Resource
                                         ->orderBy('name')->pluck('name', 'id')->toArray()
                                     ),
                             ])
+                            ->hidden(fn():bool => !(AccessHelper::canAssignPIC()))
                             ->action(function (array $data, RecruitmentRequest $record, Tables\Actions\Action $action) {
                                 $record->forceFill(['pic_id' => $data['pic_id']])->save();
 
@@ -216,6 +236,7 @@ class RecruitmentRequestResource extends Resource
                 Tables\Actions\Action::make('assign_pic')
                     ->label('Assign PIC')
                     ->icon('heroicon-o-user-plus')
+                    ->hidden(fn():bool => !(AccessHelper::canAssignPIC()))
                     ->form([
                         Forms\Components\Select::make('pic_id')
                             ->label('Pilih Staff HR')

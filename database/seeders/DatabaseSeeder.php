@@ -38,6 +38,7 @@ class DatabaseSeeder extends Seeder
         $admin->departments()->syncWithoutDetaching([$departmentIT->id]);
         $admin->assignRole('Asmen');
         $admin->assignRole('Director');
+        $admin->assignRole('SU');
 
         // Pengguna lain
         $tes1 = User::create([

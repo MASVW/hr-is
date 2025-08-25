@@ -72,6 +72,41 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
 
         return $isHrDepartment || $hasDirectorRole;
     }
+    public function isTeamLeader(): bool
+    {
+        return $this->hasRole('Team Leader');
+    }
+
+    public function isStaff(): bool
+    {
+        return $this->hasRole('Staff');
+    }
+    public function isManager(): bool
+    {
+        return $this->hasRole('Manager');
+    }
+    public function isAssMan(): bool
+    {
+        return $this->hasRole('Asmen');
+    }
+    public function isDirector(): bool
+    {
+        return $this->hasRole('Director');
+    }
+    public function isSPV(): bool
+    {
+        return $this->hasRole('SPV');
+    }
+    public function isSU(): bool
+    {
+        return $this->hasRole('SU');
+    }
+    public function isHrDept(): bool
+    {
+        return $this->departments()
+            ->where('name', 'HUMAN RESOURCE')
+            ->exists();
+    }
 
     public function getFilamentAvatarUrl(): ?string
     {

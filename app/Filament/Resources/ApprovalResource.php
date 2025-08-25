@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Admin\Resources\ApprovalResource\Pages;
 use App\Filament\Admin\Resources\ApprovalResource\RelationManagers;
 use App\Models\Approval;
+use App\Support\AccessHelper;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\Alignment;
 use Filament\Tables;
@@ -19,14 +20,23 @@ class ApprovalResource extends Resource
     protected static ?string $activeNavigationIcon = "heroicon-s-check-circle";
     protected static ?string $navigationGroup = 'Request Management';
 
-    public static function canCreate(): bool
+    public static function canAccess(): bool
     {
-        return false;
+        return AccessHelper::canAccessGlobal();
     }
 
     public static function canEdit(Model $record): bool
     {
+        return AccessHelper::canEditGlobal();
+    }
+
+    public static function canCreate(): bool
+    {
         return false;
+    }
+    public static function canView(Model $record): bool
+    {
+        return AccessHelper::canViewGlobal();
     }
 
     protected static ?int $navigationSort = 1;

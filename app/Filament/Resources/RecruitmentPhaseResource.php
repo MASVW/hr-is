@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Admin\Resources\RecruitmentPhaseResource\Pages;
 use App\Models\RecruitmentPhase;
+use App\Support\AccessHelper;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\Alignment;
 use Filament\Tables;
@@ -17,6 +18,22 @@ class RecruitmentPhaseResource extends Resource
     protected static ?string $navigationIcon = 'tabler-versions';
     protected static ?string $activeNavigationIcon = 'tabler-versions-filled';
 
+    public static function canAccess(): bool
+    {
+        return AccessHelper::canAccessHR();
+    }
+    public static function canView(Model $record): bool
+    {
+        return AccessHelper::canViewHR();
+    }
+    public static function canEdit(Model $record): bool
+    {
+        return AccessHelper::canEditHR();
+    }
+    public static function canDelete(Model $record): bool
+    {
+        return false;
+    }
     public static function canCreate(): bool
     {
         return false;

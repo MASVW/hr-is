@@ -2,17 +2,34 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Admin\Resources\DepartmentResource\Pages;
-use App\Filament\Admin\Resources\DepartmentResource\RelationManagers;
 use App\Models\Department;
+use App\Support\AccessHelper;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class DepartmentResource extends Resource
 {
+    public static function canAccess(): bool
+    {
+        return AccessHelper::canAccessHR();
+    }
+    public static function canView(Model $record): bool
+    {
+        return AccessHelper::canViewHR();
+    }
+    public static function canEdit(Model $record): bool
+    {
+        return AccessHelper::canEditHR();
+    }
+    public static function canDelete(Model $record): bool
+    {
+        return AccessHelper::canDeleteHR();
+    }
+
     protected static ?string $model = Department::class;
     protected static ?string $navigationGroup = 'User Management';
     protected static ?string $navigationIcon = 'bx-group';

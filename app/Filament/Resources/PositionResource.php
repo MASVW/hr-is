@@ -5,19 +5,47 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\PositionResource\Pages;
 use App\Filament\Resources\PositionResource\RelationManagers;
 use App\Models\Position;
+use App\Support\AccessHelper;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class PositionResource extends Resource
 {
     protected static ?string $model = Position::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-user-circle';
+    protected static ?string $activeNavigationIcon = 'heroicon-s-user-circle';
+
+    protected static ?string $navigationGroup = "User Management";
+
+    protected static ?int $navigationSort = 6;
+
+    public static function canAccess(): bool
+    {
+        return AccessHelper::canAccessHR();
+    }
+    public static function canView(Model $record): bool
+    {
+        return AccessHelper::canViewHR();
+    }
+    public static function canCreate(): bool
+    {
+        return AccessHelper::canCreateHR();
+    }
+    public static function canEdit(Model $record): bool
+    {
+        return AccessHelper::canEditHR();
+    }
+    public static function canDelete(Model $record): bool
+    {
+        return AccessHelper::canDeleteHR();
+    }
 
     public static function form(Form $form): Form
     {
