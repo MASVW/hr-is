@@ -2,48 +2,61 @@
 
 namespace Database\Factories;
 
+use App\Models\User;
 use App\Models\Department;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\User>
- */
 class UserFactory extends Factory
 {
-    /**
-     * The current password being used by the factory.
-     */
     protected static ?string $password;
 
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
-
-        $allDepartment = Department::pluck('id')->toArray();
-        $id = rand(0, (count($allDepartment)-1));
         return [
-            'id' => fake()->uuid,
+            'id' => fake()->uuid(),
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'password' => static::$password ??= Hash::make('password'),
-            'department_id' => $allDepartment[$id],
             'remember_token' => Str::random(10),
         ];
     }
 
     /**
-     * Indicate that the model's email address should be unverified.
+     * Setelah user dibuat, attach 1–3 department acak (jika ada).
      */
+    public function configure(): static
+    {
+        return $this->afterCreating(function (User $user) {
+            // Ambil 1–3 department acak yang sudah ada di DB
+            $take = fake()->numberBetween(1, 3);
+
+            $departmentIds = Department::query()
+                ->inRandomOrder()
+                ->limit($take)
+                ->pluck('id');
+
+            if ($departmentIds->isNotEmpty()) {
+                // Pastikan relasi di model User ->belongsToMany(Department::class)->withTimestamps()
+                $user->departments()->attach($departmentIds->all());
+            }
+        });
+    }
+
+    public function withRandomDepartments(int $min = 1, int $max = 3): static
+    {
+        return $this->afterCreating(function (User $user) use ($min, $max) {
+            $take = fake()->numberBetween($min, $max);
+            $ids = Department::inRandomOrder()->limit($take)->pluck('id');
+            if ($ids->isNotEmpty()) {
+                $user->departments()->attach($ids->all());
+            }
+        });
+    }
+
     public function unverified(): static
     {
-        return $this->state(fn (array $attributes) => [
-            'email_verified_at' => null,
-        ]);
+        return $this->state(fn () => ['email_verified_at' => null]);
     }
 }

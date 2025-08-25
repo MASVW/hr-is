@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 use Spatie\Permission\Traits\HasRoles;
@@ -33,9 +34,10 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
 
     protected $primaryKey = 'id';
 
-    public function department(): BelongsTo
+    public function departments(): BelongsToMany
     {
-        return $this->belongsTo(Department::class, 'department_id');
+        return $this->belongsToMany(Department::class)
+            ->withTimestamps();
     }
 
     public function recruitmentRequests(): HasMany
@@ -60,16 +62,15 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
 
     public function canAccessPanel(Panel $panel): bool
     {
-        $this->loadMissing(['department', 'roles']);
-
-        $deptName = optional($this->department)->name;
-        $isHrDepartment = $deptName && Str::upper(trim($deptName)) === 'HUMAN RESOURCE';
-
-        $hasDirectionRole = $this->roles()
-            ->whereRaw('UPPER(TRIM(name)) = ?', ['Director'])
+        $isHrDepartment = $this->departments()
+            ->whereRaw('UPPER(TRIM(name)) = ?', ['HUMAN RESOURCE'])
             ->exists();
 
-        return $isHrDepartment || $hasDirectionRole;
+        $hasDirectorRole = $this->roles()
+            ->whereRaw('UPPER(TRIM(name)) = ?', ['DIRECTOR'])
+            ->exists();
+
+        return $isHrDepartment || $hasDirectorRole;
     }
 
     public function getFilamentAvatarUrl(): ?string
