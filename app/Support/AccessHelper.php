@@ -10,23 +10,25 @@ class AccessHelper
         }
 
         return auth()->check()
-            && auth()->user()->IsHrDept()
+            && auth()->user()->isHrDept()
             && (
                 auth()->user()->isTeamLeader()
                 || auth()->user()->isManager()
                 || auth()->user()->isAssMan()
                 || auth()->user()->isDirector()
                 || auth()->user()->isSPV()
+                || auth()->user()->isStaff()
             );
     }
     public static function canViewHR(): bool
     {
+
         if (auth()->user()?->isSU()) {
             return true;
         }
 
         return auth()->check()
-            && auth()->user()->IsHrDept()
+            && auth()->user()->isHrDept()
             && (
                 auth()->user()->isTeamLeader()
                 || auth()->user()->isManager()
@@ -43,7 +45,7 @@ class AccessHelper
         }
 
         return auth()->check()
-            && auth()->user()->IsHrDept()
+            && auth()->user()->isHrDept()
             && (
                 auth()->user()->isTeamLeader()
                 || auth()->user()->isManager()
@@ -60,7 +62,7 @@ class AccessHelper
         }
 
         return auth()->check()
-            && auth()->user()->IsHrDept()
+            && auth()->user()->isHrDept()
             && (
                 auth()->user()->isTeamLeader()
                 || auth()->user()->isManager()
@@ -76,7 +78,7 @@ class AccessHelper
         }
 
         return auth()->check()
-            && auth()->user()->IsHrDept()
+            && auth()->user()->isHrDept()
             && (
                 auth()->user()->isTeamLeader()
                 || auth()->user()->isManager()
@@ -85,9 +87,21 @@ class AccessHelper
                 || auth()->user()->isSPV()
             );
     }
+
+    public static function canAccessOnlyStakeHolder(): bool
+    {
+        return auth()->check()
+            && (
+                auth()->user()->isDirector()
+                || (auth()->user()->isHrDept() && auth()->user()->isManager())
+            );
+    }
     public static function canAccessGlobal(): bool
     {
         if (auth()->user()?->isSU()) {
+            return true;
+        }
+        if (auth()->user()?->isHrDept()) {
             return true;
         }
         return auth()->check()
@@ -143,14 +157,11 @@ class AccessHelper
         if (auth()->user()?->isSU()) {
             return true;
         }
-        return (auth()->user()->IsHrDept() && (
+        return (auth()->user()->isHrDept() && (
                 (
                     auth()->user()->isDirector()
                     || auth()->user()->isManager()
                 )
-                ))
-            || (auth()->user()->isDirector()
-                || auth()->user()->isManager()
-            );
+                ));
     }
 }

@@ -36,6 +36,34 @@ class Notify
                 context:           $context,
             ));
         }
+    }    /**
+     * Kirim notifikasi Filament (bel) + broadcast (toast) ke banyak user.
+     */
+    public static function assignPICActivity(
+        iterable $recipients,              // Collection<User>|User[]
+        string   $recruitmentId,
+        string   $action,                  // 'detail_change' | 'phase_status_changed' | 'status_changed' | ...
+        array    $context,                 // untuk 'detail_change': list of changes; lainnya: assoc (from/to/...)
+        string   $actorId,
+        string   $actorName,
+        ?string  $department
+    ): void {
+        foreach ($recipients as $r) {
+            FNotification::make()
+                ->title(self::buildHead($action, $department, $context))
+                ->body(self::buildBody($action, $recruitmentId, $context, $actorName, $department))
+                ->success()
+                ->sendToDatabase($r, isEventDispatched: true);
+
+            $r->notify(new RecruitmentActivityNotification(
+                recruitmentId:     $recruitmentId,
+                action:            $action,
+                performedByName:   $actorName,
+                performedById:     $actorId,
+                department:        $department ?? null,
+                context:           $context,
+            ));
+        }
     }
 
     private static function buildHead(string $action, ?string $department, ?array $ctx): string
@@ -61,6 +89,7 @@ class Notify
                 $val($ctx['title'] ?? null),
                 $val($ctx['status'] ?? null),
             ),
+            'assignTo' => "📌 Penetapan Recruitment Request",
             default                => sprintf('Pembaharuan Perekrutan Departemen %s', $dept),
         };
     }
@@ -164,6 +193,14 @@ class Notify
                     $suffix
                 );
             })(),
+
+            'assignTo' => sprintf(
+                'Recruitment Request berjudul "%s" dari departemen %s telah resmi ditugaskan kepada Anda oleh %s.
+                        Mohon segera meninjau detail permintaan dan menindaklanjutinya sesuai prosedur yang berlaku.',
+                $ctx['title'],
+                $department,
+                $by
+            ),
 
             default => sprintf(
                 '%s memperbarui #%s: %s',

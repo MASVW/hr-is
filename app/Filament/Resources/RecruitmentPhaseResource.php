@@ -20,7 +20,7 @@ class RecruitmentPhaseResource extends Resource
 
     public static function canAccess(): bool
     {
-        return AccessHelper::canAccessHR();
+        return AccessHelper::canAccessGlobal();
     }
     public static function canView(Model $record): bool
     {
@@ -122,8 +122,17 @@ class RecruitmentPhaseResource extends Resource
 
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {
-        return parent::getEloquentQuery()
-            ->with(['recruitmentRequest.department']);
+        $query = parent::getEloquentQuery()
+            ->with(['recruitmentRequest.department', 'recruitmentRequest.approval']);
+
+        if (auth()->user()->isStaff()) {
+            $query
+                ->whereHas(
+            'recruitmentRequest.approval', fn($q) => $q->where('status', 'approved'))
+                ->whereHas('recruitmentRequest', fn($q) => $q->where('pic_id', auth()->id()));;
+        }
+
+        return $query;
     }
 
     public static function getPages(): array

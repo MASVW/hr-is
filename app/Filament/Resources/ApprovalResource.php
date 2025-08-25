@@ -22,12 +22,12 @@ class ApprovalResource extends Resource
 
     public static function canAccess(): bool
     {
-        return AccessHelper::canAccessGlobal();
+        return AccessHelper::canAccessOnlyStakeHolder();
     }
 
     public static function canEdit(Model $record): bool
     {
-        return AccessHelper::canEditGlobal();
+        return false;
     }
 
     public static function canCreate(): bool

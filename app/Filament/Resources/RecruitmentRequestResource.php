@@ -6,6 +6,7 @@ use App\Models\RecruitmentRequest;
 use App\Models\User;
 
 use App\Support\AccessHelper;
+use App\Support\Notify;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -31,7 +32,7 @@ class RecruitmentRequestResource extends Resource
 
     public static function canAccess(): bool
     {
-        return AccessHelper::canAccessHR();
+        return AccessHelper::canAccessGlobal();
     }
     public static function canView(Model $record): bool
     {
@@ -178,15 +179,44 @@ class RecruitmentRequestResource extends Resource
                                         Section::make('Kompensasi')
                                             ->schema([
                                                 Grid::make(12)->schema([
-                                                    TextEntry::make('form_data.kompensasi.gaji')->label('Gaji')->columnSpan(3)->placeholder('-'),
-                                                    TextEntry::make('form_data.kompensasi.tunjanganMakan')->label('Tunjangan Makan')->columnSpan(3)->placeholder('-'),
-                                                    TextEntry::make('form_data.kompensasi.tunjanganPerumahan')->label('Tunjangan Perumahan')->columnSpan(3)->placeholder('-'),
-                                                    TextEntry::make('form_data.kompensasi.tunjanganTransport')->label('Tunjangan Transport')->columnSpan(3)->placeholder('-'),
-                                                    TextEntry::make('form_data.kompensasi.tunjanganKomunikasi')->label('Tunjangan Komunikasi')->columnSpan(3)->placeholder('-'),
-                                                    TextEntry::make('form_data.kompensasi.hariKerja')->label('Hari Kerja')->columnSpan(9)->placeholder('-'),
+                                                    TextEntry::make('form_data.kompensasi.gaji')
+                                                        ->label('Gaji')
+                                                        ->columnSpan(3)
+                                                        ->placeholder('-')
+                                                        ->formatStateUsing(fn ($state) => $state !== null ? 'Rp' . number_format($state, 0, ',', '.') : '-'),
+
+                                                    TextEntry::make('form_data.kompensasi.tunjanganMakan')
+                                                        ->label('Tunjangan Makan')
+                                                        ->columnSpan(3)
+                                                        ->placeholder('-')
+                                                        ->formatStateUsing(fn ($state) => $state !== null ? 'Rp' . number_format($state, 0, ',', '.') : '-'),
+
+                                                    TextEntry::make('form_data.kompensasi.tunjanganPerumahan')
+                                                        ->label('Tunjangan Perumahan')
+                                                        ->columnSpan(3)
+                                                        ->placeholder('-')
+                                                        ->formatStateUsing(fn ($state) => $state !== null ? 'Rp' . number_format($state, 0, ',', '.') : '-'),
+
+                                                    TextEntry::make('form_data.kompensasi.tunjanganTransport')
+                                                        ->label('Tunjangan Transport')
+                                                        ->columnSpan(3)
+                                                        ->placeholder('-')
+                                                        ->formatStateUsing(fn ($state) => $state !== null ? 'Rp' . number_format($state, 0, ',', '.') : '-'),
+
+                                                    TextEntry::make('form_data.kompensasi.tunjanganKomunikasi')
+                                                        ->label('Tunjangan Komunikasi')
+                                                        ->columnSpan(3)
+                                                        ->placeholder('-')
+                                                        ->formatStateUsing(fn ($state) => $state !== null ? 'Rp' . number_format($state, 0, ',', '.') : '-'),
+
+                                                    TextEntry::make('form_data.kompensasi.hariKerja')
+                                                        ->label('Hari Kerja')
+                                                        ->columnSpan(9)
+                                                        ->placeholder('-'),
                                                 ]),
                                             ])
-                                            ->collapsed(),
+                                            ->collapsed()
+
                                     ]),
                             ]);
                     })
@@ -202,22 +232,39 @@ class RecruitmentRequestResource extends Resource
                                     ->searchable()
                                     ->preload()
                                     ->options(fn () => User::role('Staff')
-                                        ->whereHas('department', fn ($q) => $q->where('name', 'HUMAN RESOURCE'))
+                                        ->whereHas('departments', fn ($q) => $q->where('name', 'HUMAN RESOURCE'))
                                         ->orderBy('name')->pluck('name', 'id')->toArray()
                                     ),
                             ])
                             ->hidden(fn():bool => !(AccessHelper::canAssignPIC()))
                             ->action(function (array $data, RecruitmentRequest $record, Tables\Actions\Action $action) {
+                                $oldPicId = $record->pic_id;
                                 $record->forceFill(['pic_id' => $data['pic_id']])->save();
+                                $record->load(['pic', 'department']);
 
                                 $record->refresh();
 
                                 $action->getLivewire()->dispatch('refresh');
+                                $actor = auth()->user();
 
                                 Notification::make()
                                     ->title('PIC berhasil ditetapkan')
                                     ->success()
                                     ->send();
+
+                                if ($oldPicId !== $record->pic_id && $record->pic) {
+                                    Notify::assignPICActivity(
+                                        recipients: [$record->pic], // << kirim User, bukan string id
+                                        recruitmentId: (string) $record->getKey(),
+                                        action: 'assignTo',
+                                        context: [
+                                            'title' => $record->title,
+                                        ],
+                                        actorId: (string) ($actor->id ?? 'system'),
+                                        actorName: $actor->name ?? 'System',
+                                        department: $record->department->name ?? null, // << ambil dari relasi
+                                    );
+                                }
                             }),
 
                         Tables\Actions\Action::make('view_phases_quick')
@@ -243,9 +290,8 @@ class RecruitmentRequestResource extends Resource
                             ->required()
                             ->searchable()
                             ->preload()
-                            ->options(fn () => User::query()
-                                ->where('role', 'Staff') // atau ->role('Staff') jika Spatie
-                                ->whereHas('departments', fn ($q) => $q->where('name', 'HUMAN RESOURCES'))
+                            ->options(fn () => User::role('Staff')
+                                ->whereHas('departments', fn ($q) => $q->where('name', 'HUMAN RESOURCE'))
                                 ->orderBy('name')->pluck('name', 'id')->toArray()
                             ),
                     ])
@@ -255,8 +301,15 @@ class RecruitmentRequestResource extends Resource
 
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {
-        return parent::getEloquentQuery()
-            ->with(['approval', 'department', 'requester', 'pic', 'recruitmentPhase']);
+        $query = parent::getEloquentQuery()->with(['approval', 'department', 'requester', 'pic', 'recruitmentPhase']);
+
+        if (auth()->user()->isStaff()) {
+            $query->where('pic_id', auth()->id())
+                ->whereHas('approval', function ($query) {
+                    $query->where('status', 'approved');
+                });
+        };
+        return $query;
     }
 
     public static function getRelations(): array { return []; }

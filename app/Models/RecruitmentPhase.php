@@ -35,11 +35,6 @@ class RecruitmentPhase extends Model
         return $this->belongsTo(RecruitmentRequest::class, 'request_id');
     }
 
-    public function approval(): BelongsTo
-    {
-        return $this->belongsTo(Approval::class);
-    }
-
     public function recruitmentRequest(): HasOne
     {
         return $this->hasOne(RecruitmentRequest::class, 'phase_id');
