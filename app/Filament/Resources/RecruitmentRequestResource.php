@@ -245,7 +245,7 @@ class RecruitmentRequestResource extends Resource
                             ->preload()
                             ->options(fn () => User::query()
                                 ->where('role', 'Staff') // atau ->role('Staff') jika Spatie
-                                ->whereHas('department', fn ($q) => $q->where('name', 'HUMAN RESOURCES'))
+                                ->whereHas('departments', fn ($q) => $q->where('name', 'HUMAN RESOURCES'))
                                 ->orderBy('name')->pluck('name', 'id')->toArray()
                             ),
                     ])
