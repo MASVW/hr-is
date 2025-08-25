@@ -1,4 +1,4 @@
-// vite.config.js
+/ vite.config.js
 import { defineConfig } from "file:///E:/sam%20disk/Programming/HRIS%20Project/app/hris-laravel-11/node_modules/vite/dist/node/index.js";
 import laravel from "file:///E:/sam%20disk/Programming/HRIS%20Project/app/hris-laravel-11/node_modules/laravel-vite-plugin/dist/index.js";
 var vite_config_default = defineConfig({
