@@ -127,9 +127,9 @@ class RecruitmentRequestResource extends Resource
                                         Section::make('Recruitment')
                                             ->schema([
                                                 Grid::make(12)->schema([
-                                                    TextEntry::make('form_data.recruitmentSection.tipeRekrutmen')->label('Tipe Rekrutmen')->columnSpan(4)->placeholder('-'),
-                                                    TextEntry::make('form_data.recruitmentSection.jabatan')->label('Jabatan')->columnSpan(4)->placeholder('-'),
-                                                    TextEntry::make('form_data.recruitmentSection.jumlahKaryawan')->label('Jumlah')->columnSpan(4)->placeholder('-'),
+                                                    TextEntry::make('form_data.recruitmentSection.tipeRekrutmen')->label('Tipe Rekrutmen')->columnSpan(12)->placeholder('-'),
+                                                    TextEntry::make('form_data.recruitmentSection.jabatan')->label('Jabatan')->columnSpan(6)->placeholder('-'),
+                                                    TextEntry::make('form_data.recruitmentSection.jumlahKaryawan')->label('Jumlah')->columnSpan(6)->placeholder('-'),
                                                     TextEntry::make('form_data.recruitmentSection.departemen')->label('Departemen')->columnSpan(6)->placeholder('-'),
                                                     TextEntry::make('form_data.recruitmentSection.lokasiPenempatan')->label('Lokasi Penempatan')->columnSpan(6)->placeholder('-'),
                                                     TextEntry::make('form_data.recruitmentSection.deskripsiPekerjaan')
