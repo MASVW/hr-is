@@ -28,7 +28,7 @@ class RecruitmentPhaseResource extends Resource
     }
     public static function canEdit(Model $record): bool
     {
-        return AccessHelper::canEditHR();
+        return true;
     }
     public static function canDelete(Model $record): bool
     {

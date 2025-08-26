@@ -236,7 +236,15 @@ class RecruitmentRequestResource extends Resource
                                         ->orderBy('name')->pluck('name', 'id')->toArray()
                                     ),
                             ])
-                            ->hidden(fn():bool => !(AccessHelper::canAssignPIC()))
+                            ->hidden(function ($record): bool {
+                                if($record->pic_id){
+                                    return true;
+                                }
+                                if ($record->approval?->hrd_approval) {
+                                    return false;
+                                }
+                                return !AccessHelper::canAssignPIC();
+                            })
                             ->action(function (array $data, RecruitmentRequest $record, Tables\Actions\Action $action) {
                                 $oldPicId = $record->pic_id;
                                 $record->forceFill(['pic_id' => $data['pic_id']])->save();
@@ -283,7 +291,15 @@ class RecruitmentRequestResource extends Resource
                 Tables\Actions\Action::make('assign_pic')
                     ->label('Assign PIC')
                     ->icon('heroicon-o-user-plus')
-                    ->hidden(fn():bool => !(AccessHelper::canAssignPIC()))
+                    ->hidden(function ($record): bool {
+                        if($record->pic_id){
+                            return true;
+                        }
+                        if ($record->approval?->hrd_approval) {
+                            return false;
+                        }
+                        return !AccessHelper::canAssignPIC();
+                    })
                     ->form([
                         Forms\Components\Select::make('pic_id')
                             ->label('Pilih Staff HR')
