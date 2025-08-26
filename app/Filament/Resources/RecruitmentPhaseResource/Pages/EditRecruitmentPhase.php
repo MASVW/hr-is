@@ -31,12 +31,11 @@ class EditRecruitmentPhase extends EditRecord
     public ?string $pendingNewStatus = null;
     public ?int $editedIndex = null;
 
-    public $department;
-    public $departmentId;
-    public $hrDepartmentId;
+    public ?string $department = null;
+    public ?string $departmentId = null;   // UUID
+    public ?string $hrDepartmentId = null; // UUID
 
     public array $accumulatedChanges = [];
-
     public array $latestChanges = [];
 
     /** Key yang tidak disertakan dalam diff */
@@ -46,9 +45,13 @@ class EditRecruitmentPhase extends EditRecord
     protected function beforeFill(): void
     {
         $r = $this->getRecord();
-        $this->department = $r?->recruitmentRequest?->department?->name ?? null;
-        $this->departmentId = $r?->recruitmentRequest?->department?->id ?? null;
-        $this->hrDepartmentId =  Department::where('name', 'HUMAN RESOURCE')->first()->id;
+
+        // Ambil nama & id department dari recruitment request (request masih single-department)
+        $this->department   = $r?->recruitmentRequest?->department?->name ?? null;
+        $this->departmentId = $r?->recruitmentRequest?->department?->id   ?? null;
+
+        // Ambil ID dept HR secara aman (null jika tidak ada)
+        $this->hrDepartmentId = Department::where('name', 'HUMAN RESOURCE')->value('id');
     }
 
     public function form(Form $form): Form
@@ -523,13 +526,13 @@ class EditRecruitmentPhase extends EditRecord
 
         $phases = $this->applyRules($dbPhases, $index, $newStatus);
 
-// ==== DIFF REAKTIF (untuk detail_change) ====
+        // ==== DIFF REAKTIF (untuk detail_change) ====
         $after = $before;
         $after['phases'] = $this->sanitizePhases($phases);
         $diff = $this->diffFormData($before, $after);
         $this->accumulatedChanges = array_merge($this->accumulatedChanges, $diff);
 
-// ==== SET STATE FORM ====
+        // ==== SET STATE FORM ====
         $phases = $this->sanitizePhases($phases);
         foreach ($phases as $i => $p) {
             if (array_key_exists('status', $p)) {
@@ -537,17 +540,14 @@ class EditRecruitmentPhase extends EditRecord
             }
         }
 
-// ==== SIMPAN ====
-        $saved = $this->savePhases($phases);
+        // ==== SIMPAN ====
+        $this->savePhases($phases);
 
-// ==== TENTUKAN APAKAH STATUS BERUBAH (TANPA GANTUNG PADA $saved) ====
+        // ==== TENTUKAN APAKAH STATUS BERUBAH (TANPA GANTUNG PADA HASIL SAVE) ====
         $statusChanged = $this->phasesStatusChanged($dbPhases, $phases);
-        $changed = ($dbPhases[$index]['status'] ?? null) !== $newStatus; // tetap catat perubahan di phase yg diubah
-
         $record->refresh();
 
         if ($statusChanged) {
-            // Toast lokal
             FNotification::make()
                 ->title("{$record->recruitmentRequest->title} Berhasil Diperbaharui")
                 ->body("Perubahan status menjadi {$newStatus}")
@@ -573,7 +573,6 @@ class EditRecruitmentPhase extends EditRecord
                 department: $this->department,
             );
         }
-
     }
 
     protected function phasesStatusChanged(array $beforePhases, array $afterPhases): bool
@@ -587,40 +586,39 @@ class EditRecruitmentPhase extends EditRecord
         return false;
     }
 
+    /** Kumpulan id department yang relevan (HR + dept dari request) */
+    protected function relatedDepartmentIds(): array
+    {
+        return array_values(array_filter([$this->hrDepartmentId, $this->departmentId]));
+    }
+
+    /** RECIPIENTS (many-to-many departments) */
     protected function getRecipients($actor): Collection
     {
-        return User::where(function ($query) {
-            $query->whereHas('roles', function ($q) {
-                $q->whereIn('name', ['Manager', 'Asmen']);
-            })->where('department_id', $this->hrDepartmentId);
-        })
-            ->orWhere(function ($query) {
-                $query->whereHas('roles', function ($r) {
-                    $r->whereIn('name', ['Manager', 'Asmen']);
-                })->where('department_id', $this->departmentId);
+        $deptIds = $this->relatedDepartmentIds();
+
+        return User::query()
+            ->whereHas('roles', fn ($q) => $q->whereIn('name', ['Manager', 'Asmen']))
+            ->when(!empty($deptIds), function ($q) use ($deptIds) {
+                $q->whereHas('departments', fn ($d) => $d->whereIn('departments.id', $deptIds));
             })
-            ->when($actor, function ($q) use ($actor) {
-                $q->where('id', '!=', $actor->getKey());
-            })
+            ->when($actor, fn ($q) => $q->where('id', '!=', $actor->getKey()))
             ->get();
     }
 
+    /** RECIPIENT EMAILS (many-to-many departments) */
     protected function getRecipientsEmail($actor): array
     {
-        return User::where(function ($query) {
-            $query->whereHas('roles', function ($q) {
-                $q->whereIn('name', ['Manager', 'Asmen']);
-            })->where('department_id', $this->hrDepartmentId);
-        })
-            ->orWhere(function ($query) {
-                $query->whereHas('roles', function ($r) {
-                    $r->whereIn('name', ['Manager', 'Asmen']);
-                })->where('department_id', $this->departmentId);
+        $deptIds = $this->relatedDepartmentIds();
+
+        return User::query()
+            ->whereHas('roles', fn ($q) => $q->whereIn('name', ['Manager', 'Asmen']))
+            ->when(!empty($deptIds), function ($q) use ($deptIds) {
+                $q->whereHas('departments', fn ($d) => $d->whereIn('departments.id', $deptIds));
             })
-            ->when($actor, function ($q) use ($actor) {
-                $q->where('id', '!=', $actor->getKey());
-            })
+            ->when($actor, fn ($q) => $q->where('id', '!=', $actor->getKey()))
             ->pluck('email')
+            ->filter(fn ($email) => filter_var($email, FILTER_VALIDATE_EMAIL))
             ->unique()
             ->values()
             ->toArray();
@@ -888,7 +886,6 @@ class EditRecruitmentPhase extends EditRecord
             department:    $this->department,
         );
 
-
         $reviseItems = array_values(array_filter(
             $changesPayload,
             static fn ($c) => isset($c['field']) && strtolower((string)$c['field']) === 'revisenotes'
@@ -937,7 +934,6 @@ class EditRecruitmentPhase extends EditRecord
 
         $this->fillForm();
     }
-
 
     protected function getHeaderActions(): array
     {
