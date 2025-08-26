@@ -69,6 +69,7 @@ class AccessHelper
                 || auth()->user()->isAssMan()
                 || auth()->user()->isDirector()
                 || auth()->user()->isSPV()
+                || auth()->user()->isStaff()
             );
     }
     public static function canDeleteHR(): bool
