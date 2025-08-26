@@ -46,6 +46,9 @@ class AdminPanelProvider extends PanelProvider
                 Widgets\AccountWidget::class,
                 Widgets\FilamentInfoWidget::class,
             ])
+            ->brandLogo("/img/logo_iag.webp")
+            ->brandName('Admin Perekrutan Tenaga Kerja')
+            ->brandLogoHeight('80px')
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

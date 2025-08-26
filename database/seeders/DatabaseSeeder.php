@@ -104,23 +104,23 @@ class DatabaseSeeder extends Seeder
         $admin3->departments()->syncWithoutDetaching([$departmentHR->id]);
         $admin3->assignRole('Staff');
 
-        $mrMustika = User::create([
-            'id'       => (string) Str::uuid(),
-            'name'     => 'Mr. Mustika Lautan',
-            'email'    => 'mustika@indraangkola.com',
-            'password' => Hash::make('password'),
-        ]);
-        $mrMustika->departments()->syncWithoutDetaching([$departmentIT->id]);
-        $mrMustika->assignRole('Director');
+//        $mrMustika = User::create([
+//            'id'       => (string) Str::uuid(),
+//            'name'     => 'Mr. Mustika Lautan',
+//            'email'    => 'mustika@indraangkola.com',
+//            'password' => Hash::make('password'),
+//        ]);
+//        $mrMustika->departments()->syncWithoutDetaching([$departmentIT->id]);
+//        $mrMustika->assignRole('Director');
 
-        $msMeriawati = User::create([
-            'id'       => (string) Str::uuid(),
-            'name'     => 'Ms. Meriawaty',
-            'email'    => 'meri@indraangkola.com',
-            'password' => Hash::make('password'),
-        ]);
-        $msMeriawati->departments()->syncWithoutDetaching([$departmentHR->id]);
-        $msMeriawati->assignRole('Director');
+//        $msMeriawati = User::create([
+//            'id'       => (string) Str::uuid(),
+//            'name'     => 'Ms. Meriawaty',
+//            'email'    => 'meri@indraangkola.com',
+//            'password' => Hash::make('password'),
+//        ]);
+//        $msMeriawati->departments()->syncWithoutDetaching([$departmentHR->id]);
+//        $msMeriawati->assignRole('Director');
 
         // User factory tambahan + role acak + attach 1–3 department acak (fallback jika factory belum meng-attach)
         $roles = Role::pluck('name')->toArray();
