@@ -76,8 +76,10 @@ class Emailer
     {
         $params = ['recruitmentId' => $recruitmentId, 'userId' => $userId];
 
-        return $expiresIn
-            ? URL::temporarySignedRoute($route, now()->addMinutes($expiresIn), $params)
-            : URL::signedRoute($route, $params);
+        $relative = $expiresIn
+            ? URL::temporarySignedRoute($route, now()->addMinutes($expiresIn), $params, absolute: false)
+            : URL::signedRoute($route, $params, absolute: false);
+
+        return URL::to($relative);
     }
 }

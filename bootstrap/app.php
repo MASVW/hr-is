@@ -13,16 +13,18 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (\Illuminate\Foundation\Configuration\Middleware $middleware) {
-        $headers = SymfonyRequest::HEADER_X_FORWARDED_FOR
-            | SymfonyRequest::HEADER_X_FORWARDED_HOST
-            | SymfonyRequest::HEADER_X_FORWARDED_PROTO
-            | SymfonyRequest::HEADER_X_FORWARDED_PORT;
+        $middleware->trustProxies(at: '*');
+//        $headers = SymfonyRequest::HEADER_X_FORWARDED_FOR
+//            | SymfonyRequest::HEADER_X_FORWARDED_HOST
+//            | SymfonyRequest::HEADER_X_FORWARDED_PROTO
+//            | SymfonyRequest::HEADER_X_FORWARDED_PORT;
 
         $middleware->alias([
             'hapi.js' => \App\Http\Middleware\VerifyHapiSignature::class,
+            'force-http' => \App\Http\Middleware\ForceHTTPS::class,
         ]);
 
-        $middleware->trustProxies(at: '*', headers: $headers);
+//        $middleware->trustProxies(at: '*', headers: $headers);
 
         $middleware->trustHosts([
             '^hris-admin-709127657420\.asia-southeast2\.run\.app$',
