@@ -7,7 +7,8 @@ Route::get('/', function () {
 });
 
 Route::get('/approvals/{recruitmentId}/pic/approve', \App\Livewire\AssignComponent::class)
-    ->name('approvals.pic.approve');
+    ->name('approvals.pic.approve')
+    ->middleware('signed:relative');
 
 Route::middleware('signed')->group(function () {
     Route::get('/approvals/{recruitmentId}/{userId}/approve', [\App\Http\Controllers\ApprovalActionController::class, 'approve'])
