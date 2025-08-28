@@ -8,6 +8,7 @@ use App\Models\Department;
 use App\Models\RecruitmentRequest;
 use App\Models\User;
 use App\Support\Notify;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -64,7 +65,7 @@ class ApprovalActionController extends Controller{
         });
 
         $approval->refresh();
-        $this->finalize($approval, $phase, $formData);
+        $this->finalize($approval, $phase, $formData, $approval);
 
         $recipients = collect();
         if ($requester) $recipients->push($requester);
@@ -90,7 +91,6 @@ class ApprovalActionController extends Controller{
             department: $request->department?->name,
         );
 
-        // Jika HR approve & belum ada PIC → arahkan ke assign PIC
         if ($isHrManager && $isApproved && $assigned) {
             return redirect()->to("/approvals/{$recruitmentId}/pic/approve");
         }
@@ -99,41 +99,84 @@ class ApprovalActionController extends Controller{
         return redirect()->to(config('app.url'))->with('status', $message);
     }
 
-    private function finalize(Approval $approval, ?\Illuminate\Database\Eloquent\Model $phase, array &$formData): void
+    private function finalize(Approval $approval, Model $phase, array &$formData, RecruitmentRequest $recruitmentRequest): void
     {
-        $hrDone      = !is_null($approval->hrd_approval);
-        $dirDecision = $approval->director_approval ?? $approval->chairman_approval; // dukung data lama
-        $dirDone     = !is_null($dirDecision);
+        $norm = static function ($v): ?bool {
+            if (is_null($v)) return null;
+            if (is_bool($v)) return $v;
+            if (is_int($v)) return $v === 1;
+            if (is_string($v)) {
+                $f = filter_var($v, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+                return $f;
+            }
+            return (bool) $v;
+        };
 
-        if (!($hrDone && $dirDone)) {
-            return; // belum lengkap, tunda finalisasi
+        $hrVal   = $norm($approval->hrd_approval);
+        $dirVals = [
+            'director' => $norm($approval->director_approval),
+            'chairman' => $norm($approval->chairman_approval),
+        ];
+
+        $hrDone = !is_null($hrVal);
+
+        $dirResolved = array_filter($dirVals, static fn($v) => !is_null($v));
+
+        if (!$hrDone || count($dirResolved) === 0) {
+            return;
         }
 
         if (in_array($approval->status, ['approved', 'rejected'], true)) {
             return;
         }
 
-        if ($approval->hrd_approval && $dirDecision) {
-            $approval->forceFill([
-                'status'      => 'approved',
-                'approved_at' => now(),
-            ])->save();
-
-            $formData['phases'][1]['status']    = 'finish';
-            $formData['phases'][2]['status']    = 'progress';
-            $formData['phases'][1]['updatedAt'] = now()->toISOString();
+        $dirDecision = null;
+        if (count($dirResolved) === 2) {
+            $dirDecision = ($dirResolved['director'] === true) && ($dirResolved['chairman'] === true);
         } else {
-            $approval->forceFill([
-                'status'      => 'rejected',
-                'approved_at' => now(),
-            ])->save();
-
-            $formData['phases'][1]['status']    = 'cancel';
-            $formData['phases'][1]['updatedAt'] = now()->toISOString();
+            $dirDecision = reset($dirResolved) === true;
         }
 
-        if ($phase) {
-            $phase->update(['form_data' => $formData]);
-        }
+        $nowIso = now()->toIso8601String();
+
+        DB::transaction(function () use ($hrVal, $dirDecision, $nowIso, &$formData, $approval, $phase, $recruitmentRequest) {
+            if ($hrVal === true && $dirDecision === true) {
+
+                $approval->forceFill([
+                    'status'      => 'approved',
+                    'approved_at' => now(),
+                ])->save();
+
+                foreach ([1 => 'finish', 2 => 'progress'] as $idx => $status) {
+                    if (!isset($formData['phases'][$idx]) || !is_array($formData['phases'][$idx])) {
+                        $formData['phases'][$idx] = [];
+                    }
+                    $formData['phases'][$idx]['status']    = $status;
+                    $formData['phases'][$idx]['updatedAt'] = $nowIso;
+                }
+
+                $recruitmentRequest->status = 'progress';
+                $recruitmentRequest->save();
+            } else {
+                $approval->forceFill([
+                    'status'      => 'rejected',
+                    'approved_at' => now(),
+                ])->save();
+
+                if (!isset($formData['phases'][1]) || !is_array($formData['phases'][1])) {
+                    $formData['phases'][1] = [];
+                }
+                $formData['phases'][1]['status']    = 'cancel';
+                $formData['phases'][1]['updatedAt'] = $nowIso;
+
+                $recruitmentRequest->status = 'rejected';
+                $recruitmentRequest->save();
+            }
+
+            if ($phase) {
+                $phase->update(['form_data' => $formData]);
+            }
+        });
     }
+
 }

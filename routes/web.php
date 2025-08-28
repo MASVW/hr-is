@@ -28,7 +28,6 @@ Route::get('/__debug/signed', function () {
 });
 
 Route::get('/approvals/{recruitmentId}/{userId}/approve/debug', function (\Illuminate\Http\Request $r) {
-    // sementara TANPA middleware untuk lihat detail apa yang dihitung
     $prepared = $r->url();
     $qs = \Illuminate\Support\Arr::query(collect($r->query())->except('signature')->sortKeys()->all());
     if ($qs !== '') $prepared .= '?'.$qs;

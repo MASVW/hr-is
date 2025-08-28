@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('recruitment_requests', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->enum('status', ['pending', 'approved']);
+            $table->enum('status', ['pending', 'progress', 'finish', 'rejected']);
             $table->string('title');
             $table->uuid('department_id');
             $table->uuid('requested_by')->nullable();

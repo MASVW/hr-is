@@ -12,8 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-
-// tambahkan ini
+use Illuminate\Support\Facades\DB;
 use Filament\Forms;
 use Filament\Tables\Actions\Action;
 use Filament\Notifications\Notification;
@@ -103,49 +102,72 @@ class ApprovalResource extends Resource
                             ->options([
                                 'approve' => 'Setujui',
                                 'reject'  => 'Tolak',
-                            ])
-                            ->required(),
-                        Forms\Components\Textarea::make('note')
-                            ->label('Catatan (opsional)')
-                            ->maxLength(500),
+                            ])->required(),
+                        Forms\Components\Textarea::make('note')->label('Catatan (opsional)')->maxLength(500),
                     ])
                     ->action(function (array $data, Approval $record) {
-                        $record->director_approval   = $data['decision'] === 'approve';
-                        $record->director_decided_at = now();
+                        DB::transaction(function () use ($data, $record) {
+                            $record->director_approval   = $data['decision'] === 'approve';
+                            $record->director_decided_at = now();
+                            $record->save();
 
-                        if (! is_null($record->hrd_approval)) {
-                            $phase    = $record->request->recruitmentPhase;
-                            $formData = $phase->form_data;
+                            // Hanya proses final kalau HRD sudah memutuskan
+                            if (! is_null($record->hrd_approval)) {
+                                $phase = $record->request->recruitmentPhase;
+                                $formData = (array) ($phase->form_data ?? []);
+                                $formData['phases'] = $formData['phases'] ?? [];
+                                $formData['phases'][1] = is_array($formData['phases'][1] ?? null) ? $formData['phases'][1] : [];
+                                $formData['phases'][2] = is_array($formData['phases'][2] ?? null) ? $formData['phases'][2] : [];
 
-                            if ($record->hrd_approval === false) {
-                                // HR menolak → otomatis rejected
-                                $record->status = 'rejected';
-
-                                $formData['phases'][1]['status']    = 'cancel';
-                                $formData['phases'][1]['updatedAt'] = now()->toISOString();
-                            } else {
-                                // HR setuju → ikuti keputusan direktur
-                                if ($record->director_approval === true) {
-                                    $record->status      = 'approved';
-
-                                    $formData['phases'][1]['status']    = 'finish';
-                                    $formData['phases'][2]['status']    = 'progress';
-                                    $formData['phases'][1]['updatedAt'] = now()->toISOString();
-                                } else {
+                                if ($record->hrd_approval === false) {
+                                    // HR menolak → final REJECT
                                     $record->status = 'rejected';
+                                    $record->approved_at = now();
+
+                                    $record->request->status = 'rejected';
+                                    $record->request->save();
 
                                     $formData['phases'][1]['status']    = 'cancel';
-                                    $formData['phases'][1]['updatedAt'] = now()->toISOString();
+                                    $formData['phases'][1]['updatedAt'] = now()->toIso8601String();
+                                    if ($phase) {
+                                        $phase->update(['form_data' => $formData]);
+                                    }
+                                } else {
+                                    // HR setuju → ikuti keputusan direktur
+                                    if ($record->director_approval === true) {
+                                        // Final APPROVE
+                                        $record->status = 'approved';
+                                        $record->approved_at = now();
+
+                                        $record->request->status = 'progress';
+                                        $record->request->save();
+
+                                        $formData['phases'][1]['status']    = 'finish';
+                                        $formData['phases'][1]['updatedAt'] = now()->toIso8601String();
+                                        $formData['phases'][2]['status']    = 'progress';
+                                        $formData['phases'][2]['updatedAt'] = now()->toIso8601String();
+                                        if ($phase) {
+                                            $phase->update(['form_data' => $formData]);
+                                        }
+                                    } else {
+                                        // Direktur tolak → final REJECT
+                                        $record->status = 'rejected';
+                                        $record->approved_at = now();
+
+                                        $record->request->status = 'rejected';
+                                        $record->request->save();
+
+                                        $formData['phases'][1]['status']    = 'cancel';
+                                        $formData['phases'][1]['updatedAt'] = now()->toIso8601String();
+                                        if ($phase) {
+                                            $phase->update(['form_data' => $formData]);
+                                        }
+                                    }
                                 }
+
+                                $record->save();
                             }
-                            $record->approved_at = now();
-
-                            $phase->update([
-                                'form_data' => $formData,
-                            ]);
-                        }
-
-                        $record->save();
+                        });
 
                         Notification::make()
                             ->success()
@@ -159,9 +181,9 @@ class ApprovalResource extends Resource
                     ->icon('heroicon-o-check-circle')
                     ->visible(fn(Approval $record) => (
                         is_null($record->hrd_approval) && (
-                            (auth()->user()->isManager()
-                                || auth()->user()->isDirector())
-                            && auth()->user()->isHrDept())
+                            (auth()->user()->isManager() || auth()->user()->isDirector())
+                            && auth()->user()->isHrDept()
+                        )
                     ))
                     ->modalHeading('Tentukan Keputusan Manager')
                     ->modalSubmitActionLabel('Simpan')
@@ -170,54 +192,83 @@ class ApprovalResource extends Resource
                             ->label('Keputusan')
                             ->options([
                                 'approve' => 'Setujui',
-                                'reject' => 'Tolak',
-                            ])
-                            ->required(),
-                        Forms\Components\Textarea::make('note')
-                            ->label('Catatan (opsional)')
-                            ->maxLength(500),
+                                'reject'  => 'Tolak',
+                            ])->required(),
+                        Forms\Components\Textarea::make('note')->label('Catatan (opsional)')->maxLength(500),
                     ])
                     ->action(function (array $data, Approval $record) {
-                        $record->hrd_approval = $data['decision'] === 'approve';
-                        $record->hrd_decided_at = now();
+                        DB::transaction(function () use ($data, $record) {
+                            // ⛔ FIX: Manager HR harus set hrd_approval
+                            $record->hrd_approval   = $data['decision'] === 'approve';
+                            $record->hrd_decided_at = now();
+                            $record->save();
 
-                        if (!is_null($record->director_approval)) {
-                            $phase     = $record->request->recruitmentPhase;
-                            $formData  = $phase->form_data;
+                            // Hanya proses final kalau Direktur sudah memutuskan
+                            if (! is_null($record->director_approval)) {
+                                $phase = $record->request->recruitmentPhase;
+                                $formData = (array) ($phase->form_data ?? []);
+                                $formData['phases'] = $formData['phases'] ?? [];
+                                $formData['phases'][1] = is_array($formData['phases'][1] ?? null) ? $formData['phases'][1] : [];
+                                $formData['phases'][2] = is_array($formData['phases'][2] ?? null) ? $formData['phases'][2] : [];
 
-                            if ($record->director_approval === false) {
-                                $record->status = 'rejected';
-                                $formData['phases'][1]['status']    = 'cancel';
-                                $formData['phases'][1]['updatedAt'] = now()->toISOString();
-                            } else {
-                                if ($record->hrd_approval === true) {
-                                    $record->status      = 'approved';
-
-                                    $formData['phases'][1]['status']    = 'finish';
-                                    $formData['phases'][2]['status']    = 'progress';
-                                    $formData['phases'][1]['updatedAt'] = now()->toISOString();
-                                } else {
+                                if ($record->director_approval === false) {
+                                    // Direktur tolak → final REJECT
                                     $record->status = 'rejected';
+                                    $record->approved_at = now();
+
+                                    $record->request->status = 'rejected';
+                                    $record->request->save();
 
                                     $formData['phases'][1]['status']    = 'cancel';
-                                    $formData['phases'][1]['updatedAt'] = now()->toISOString();
-                                }
-                            }
-                            $record->approved_at = now();
-                            $phase->update([
-                                'form_data' => $formData,
-                            ]);
-                        }
+                                    $formData['phases'][1]['updatedAt'] = now()->toIso8601String();
+                                    if ($phase) {
+                                        $phase->update(['form_data' => $formData]);
+                                    }
+                                } else {
+                                    // Direktur setuju → ikuti keputusan HR
+                                    if ($record->hrd_approval === true) {
+                                        // Final APPROVE
+                                        $record->status = 'approved';
+                                        $record->approved_at = now();
 
-                        $record->save();
+                                        $record->request->status = 'progress';
+                                        $record->request->save();
+
+                                        $formData['phases'][1]['status']    = 'finish';
+                                        $formData['phases'][1]['updatedAt'] = now()->toIso8601String();
+                                        $formData['phases'][2]['status']    = 'progress';
+                                        $formData['phases'][2]['updatedAt'] = now()->toIso8601String();
+                                        if ($phase) {
+                                            $phase->update(['form_data' => $formData]);
+                                        }
+                                    } else {
+                                        // HR menolak → final REJECT
+                                        $record->status = 'rejected';
+                                        $record->approved_at = now();
+
+                                        $record->request->status = 'rejected';
+                                        $record->request->save();
+
+                                        $formData['phases'][1]['status']    = 'cancel';
+                                        $formData['phases'][1]['updatedAt'] = now()->toIso8601String();
+                                        if ($phase) {
+                                            $phase->update(['form_data' => $formData]);
+                                        }
+                                    }
+                                }
+
+                                $record->save();
+                            }
+                        });
 
                         Notification::make()
                             ->success()
                             ->title('Keputusan tersimpan')
                             ->body('Keputusan manager HR berhasil disimpan dan status diperbarui.')
                             ->send();
-                    })
+                    }),
             ])
+
             ->filters([
                 //
             ]);

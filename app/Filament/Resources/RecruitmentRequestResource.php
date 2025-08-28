@@ -79,7 +79,6 @@ class RecruitmentRequestResource extends Resource
                     ->getStateUsing(fn ($record) => ($record->approval->status ?? null) === 'approved'),
             ])
             ->actions([
-                // ACTION: Detail (default row click)
                 Tables\Actions\Action::make('view_request')
                     ->label('Detail')
                     ->icon('heroicon-o-eye')
@@ -99,7 +98,7 @@ class RecruitmentRequestResource extends Resource
                                                 ->badge()
                                                 ->color(fn (?string $state) => match ($state) {
                                                     'pending'   => 'warning',
-                                                    'approved'  => 'success',
+                                                    'finish'  => 'success',
                                                     'rejected'  => 'danger',
                                                     default     => 'gray',
                                                 })
@@ -128,14 +127,14 @@ class RecruitmentRequestResource extends Resource
                                                 ->boolean()
                                                 ->trueIcon('heroicon-o-check-circle')
                                                 ->falseIcon('heroicon-o-x-circle')
-                                                ->state(fn ($record) => ($record->approval->hrd_approval ?? null) === 'approved')
+                                                ->state(fn ($record) => $record->approval->hrd_approval ? true : false)
                                                 ->columnSpan(4),
-                                            IconEntry::make('approval.chairman_approval')
+                                            IconEntry::make('approval.director_approval')
                                                 ->label('Direksi')
                                                 ->boolean()
                                                 ->trueIcon('heroicon-o-check-circle')
                                                 ->falseIcon('heroicon-o-x-circle')
-                                                ->state(fn ($record) => ($record->approval->chairman_approval ?? null) === 'approved')
+                                                ->state(fn ($record) => $record->approval->director_approval ? true : false)
                                                 ->columnSpan(4),
                                         ]),
                                     ]),
