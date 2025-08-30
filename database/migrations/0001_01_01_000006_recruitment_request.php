@@ -15,6 +15,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->enum('status', ['pending', 'progress', 'finish', 'rejected']);
             $table->string('title');
+            $table->string('recruitment_type')->nullable(false);
             $table->uuid('department_id');
             $table->uuid('requested_by')->nullable();
             $table->uuid('approval_id')->nullable();

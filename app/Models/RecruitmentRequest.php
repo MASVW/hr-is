@@ -26,7 +26,8 @@ class RecruitmentRequest extends Model
         'department_id',
         'requested_by',
         'approval_id',
-        'form_data'
+        'form_data',
+        'recruitment_type'
     ];
 
     public function department(): BelongsTo

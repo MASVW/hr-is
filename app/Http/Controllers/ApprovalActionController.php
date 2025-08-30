@@ -65,7 +65,7 @@ class ApprovalActionController extends Controller{
         });
 
         $approval->refresh();
-        $this->finalize($approval, $phase, $formData, $approval);
+        $this->finalize($approval, $phase, $formData, $request);
 
         $recipients = collect();
         if ($requester) $recipients->push($requester);

@@ -23,23 +23,22 @@ class RecruitmentPhaseFactory extends Factory
                 'phases' => [
                     [
                         'name' => 'Requesting',
-                        'status' => 'finish',
+                        'status' => 'progress',
                         'note' => '',
                         'updatedAt' => '2025-07-16T09:00:00Z',
                         'reviseNotes' => []
                     ], //0
                     [
                         'name' => 'Approval by Stakeholder',
-                        'status' => 'finish',
+                        'status' => 'pending',
                         'isApproved' => true,
-                        'useId' => 1,
                         'updatedAt' => null,
                         'note' => '',
                         'reviseNotes' => []
                     ], //1
                     [
                         'name' => 'CV Collection',
-                        'status' => 'progress',
+                        'status' => 'pending',
                         'totalCV' => 0,
                         'updatedAt' => null,
                         'note' => '',
@@ -48,13 +47,13 @@ class RecruitmentPhaseFactory extends Factory
                     [
                         'name' => 'CV Screening',
                         'status' => 'pending',
-                        'approvedCV' => 10,
+                        'approvedCV' => 0,
                         'updatedAt' => null,
                         'note' => '',
                         'reviseNotes' => []
                     ], //3
                     [
-                        'name' => 'Check Background (SLIK, Medic CU)',
+                        'name' => 'Check Background (SLIK)',
                         'status' => 'pending',
                         'candidate' => 0,
                         'checked' => 0,
@@ -67,14 +66,14 @@ class RecruitmentPhaseFactory extends Factory
                         'name' => 'Psychology Assessment',
                         'status' => 'pending',
                         'candidate' => 0,
-                        'finisihed' => 0,
+                        'finished' => 0,
                         'passed' => 0,
                         'updatedAt' => null,
                         'note' => '',
                         'reviseNotes' => []
                     ], //5
                     [
-                        'name' => 'HRD Interview',
+                        'name' => 'Interview with HRD',
                         'status' => 'pending',
                         'interviewed' => 0,
                         'candidate' => 0,
@@ -94,17 +93,36 @@ class RecruitmentPhaseFactory extends Factory
                         'reviseNotes' => []
                     ],
                     [
-                        'name' => 'Offering',
+                        'name' => 'Interview with TOP Management',
+                        'status' => 'pending',
+                        'interviewed' => 0,
+                        'candidate' => 0,
+                        'passed' => 0,
+                        'updatedAt' => null,
+                        'note' => '',
+                        'reviseNotes' => []
+                    ],
+                    [
+                        'name' => 'Negosiasi THP',
                         'status' => 'pending',
                         'candidate' => 0,
-                        'offered' => 0,
                         'agreed' => 0,
                         'updatedAt' => null,
                         'note' => '',
                         'reviseNotes' => []
                     ],
                     [
-                        'name' => 'Onboarding',
+                        'name' => 'Medical Check Up (MCU)',
+                        'status' => 'pending',
+                        'hasChecked' => 0,
+                        'candidate' => 0,
+                        'passed' => 0,
+                        'updatedAt' => null,
+                        'note' => '',
+                        'reviseNotes' => []
+                    ],
+                    [
+                        'name' => 'Onboarding (TTD Kontrak)',
                         'status' => 'pending',
                         'candidate' => [
                             [

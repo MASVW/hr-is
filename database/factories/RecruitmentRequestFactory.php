@@ -50,6 +50,7 @@ class RecruitmentRequestFactory extends Factory
             'phase_id' => null,
             'title' => $this->faker->randomElement($titleOptions),
             'status' => 'pending',
+            'recruitment_type' => 'pergantian',
             'department_id' => \App\Models\Department::factory(),
             'requested_by' => \App\Models\User::factory(),
             'approval_id' => \App\Models\Approval::factory(),
