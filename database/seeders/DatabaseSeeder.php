@@ -195,15 +195,15 @@ class DatabaseSeeder extends Seeder
         $makeSamples($departmentProc,$admin->id, 10);
 
 
-        $mrMustika = User::create([
-            'id'       => (string) Str::uuid(),
-            'name'     => 'Mr. Mustika Lautan',
-            'email'    => 'mustika@indraangkola.com',
-            'password' => Hash::make('password'),
-        ]);
-        $mrMustika->departments()->syncWithoutDetaching([$departmentIT->id]);
-        $mrMustika->departments()->syncWithoutDetaching([$departmentTop->id]);
-        $mrMustika->assignRole('Director');
+//        $mrMustika = User::create([
+//            'id'       => (string) Str::uuid(),
+//            'name'     => 'Mr. Mustika Lautan',
+//            'email'    => 'mustika@indraangkola.com',
+//            'password' => Hash::make('password'),
+//        ]);
+//        $mrMustika->departments()->syncWithoutDetaching([$departmentIT->id]);
+//        $mrMustika->departments()->syncWithoutDetaching([$departmentTop->id]);
+//        $mrMustika->assignRole('Director');
 
 //        $msMeriawati = User::create([
 //            'id'       => (string) Str::uuid(),
