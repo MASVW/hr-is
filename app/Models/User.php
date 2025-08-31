@@ -63,7 +63,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     public function canAccessPanel(Panel $panel): bool
     {
         $isHrDepartment = $this->departments()
-            ->whereRaw('UPPER(TRIM(name)) = ?', ['HUMAN RESOURCE'])
+            ->whereRaw('UPPER(TRIM(name)) = ?', ['HRD'])
             ->exists();
 
         $hasDirectorRole = $this->roles()
