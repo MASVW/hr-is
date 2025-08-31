@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\Department;
 use App\Models\RecruitmentRequest;
 use App\Models\User;
+use App\Support\Notify;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\Rule;
@@ -15,6 +16,7 @@ class AssignComponent extends Component
 {
     public string $recruitmentId;
     public RecruitmentRequest $recruitment;
+    public $actor;
 
     public ?string $pic_id = null;
 
@@ -29,7 +31,7 @@ class AssignComponent extends Component
         $this->recruitmentId = $recruitmentId;
         $this->recruitment   = RecruitmentRequest::with('department')->findOrFail($recruitmentId);
 
-        $this->hrDeptId = Department::whereRaw('UPPER(TRIM(name)) = ?', ['HUMAN RESOURCE'])->value('id');
+        $this->hrDeptId = Department::whereRaw('UPPER(TRIM(name)) = ?', ['HRD'])->value('id');
 
         // Ambil user role=Staff yang berada di departemen HR (many-to-many)
         $this->hrStaff = User::query()
@@ -70,6 +72,18 @@ class AssignComponent extends Component
         ])->save();
 
         session()->flash('success', 'PIC berhasil ditetapkan.');
+
+        Notify::assignPICActivity(
+            recipients: [$this->pic_id],
+            recruitmentId: (string) $this->recruitment->getKey(),
+            action: 'assignTo',
+            context: [
+                'title' => $this->recruitment->title,
+            ],
+            actorId: (string) ($actor->id ?? 'system'),
+            actorName: $auth()->user()->name ?? 'Manager HRD',
+            department: $this->recruitment->department->name ?? null,
+        );
 
         return redirect()->to(config('app.url'));
     }

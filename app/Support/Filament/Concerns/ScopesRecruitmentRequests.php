@@ -18,12 +18,19 @@ trait ScopesRecruitmentRequests
             return $q->whereRaw('1=0');
         }
 
-        if ($user->isAssMan() || $user->isDirector() || $user->isManager() || $user->isSU() ) {
+        if (
+            ($user->isHrDept()
+                && ($user->isAssMan()
+                    || $user->isDirector()
+                    || $user->isManager()
+                    || $user->isTeamLeader()))
+            || $user->isSU()
+        ) {
             return $q;
         }
 
-        if ($user->hasRole(['Team Leader', 'Staff'])) {
-            return $q->where('department_id', $user->department_id);
+        if ($user->hasRole(['Staff'])) {
+            return $q->where('pic_id', $user->id);
         }
 
         return $q->where('department_id', $user->department_id);

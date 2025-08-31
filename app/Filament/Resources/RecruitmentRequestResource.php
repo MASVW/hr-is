@@ -231,7 +231,7 @@ class RecruitmentRequestResource extends Resource
                                     ->searchable()
                                     ->preload()
                                     ->options(fn () => User::role('Staff')
-                                        ->whereHas('departments', fn ($q) => $q->where('name', 'HUMAN RESOURCE'))
+                                        ->whereHas('departments', fn ($q) => $q->where('name', 'HRD'))
                                         ->orderBy('name')->pluck('name', 'id')->toArray()
                                     ),
                             ])
@@ -261,7 +261,7 @@ class RecruitmentRequestResource extends Resource
 
                                 if ($oldPicId !== $record->pic_id && $record->pic) {
                                     Notify::assignPICActivity(
-                                        recipients: [$record->pic], // << kirim User, bukan string id
+                                        recipients: [$record->pic_id],
                                         recruitmentId: (string) $record->getKey(),
                                         action: 'assignTo',
                                         context: [
@@ -269,7 +269,7 @@ class RecruitmentRequestResource extends Resource
                                         ],
                                         actorId: (string) ($actor->id ?? 'system'),
                                         actorName: $actor->name ?? 'System',
-                                        department: $record->department->name ?? null, // << ambil dari relasi
+                                        department: $record->department->name ?? null,
                                     );
                                 }
                             }),
@@ -306,7 +306,7 @@ class RecruitmentRequestResource extends Resource
                             ->searchable()
                             ->preload()
                             ->options(fn () => User::role('Staff')
-                                ->whereHas('departments', fn ($q) => $q->where('name', 'HUMAN RESOURCE'))
+                                ->whereHas('departments', fn ($q) => $q->where('name', 'HRD'))
                                 ->orderBy('name')->pluck('name', 'id')->toArray()
                             ),
                     ])

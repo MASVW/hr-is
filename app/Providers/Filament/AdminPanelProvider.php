@@ -33,7 +33,6 @@ class AdminPanelProvider extends PanelProvider
                 'Request Management',
                 'User Management',
             ])
-            ->spa()
             ->colors([
                 'primary' => Color::Amber,
             ])

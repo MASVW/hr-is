@@ -104,7 +104,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     public function isHrDept(): bool
     {
         return $this->departments()
-            ->where('name', 'HUMAN RESOURCE')
+            ->where('name', 'HRD')
             ->exists();
     }
 

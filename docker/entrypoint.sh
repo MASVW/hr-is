@@ -18,6 +18,13 @@ if [ -n "${APP_KEY:-}" ]; then
 
   php artisan optimize:clear || true
   php artisan optimize || true
+#  php artisan config:clear || true
+#  php artisan view:clear || true
+#  php artisan cache:clear || true
+#
+#  php artisan config:cache || true
+#  php artisan view:cache || true
+#  php artisan route:cache  || true
 fi
 
 # 5) Kembalikan izin ke user web

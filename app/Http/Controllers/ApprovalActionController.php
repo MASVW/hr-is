@@ -70,7 +70,7 @@ class ApprovalActionController extends Controller{
         $recipients = collect();
         if ($requester) $recipients->push($requester);
 
-        $hrDeptId = Department::where('name', 'HUMAN RESOURCE')->value('id');
+        $hrDeptId = Department::where('name', 'HRD')->value('id');
         $hrManagers = User::whereHas('roles', fn($q) => $q->where('name', 'Manager'))
             ->whereHas('departments', fn($q) => $q->where('id', $hrDeptId))
             ->get();
