@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->trustHosts([
             '^hris-admin-709127657420\.asia-southeast2\.run\.app$',
+            '^(.+\.)?indraangkola\.com$'
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

@@ -7,7 +7,8 @@
 /vendor
 .env
 .env.*
-env.yaml
+env-dev.yaml
+env-prod.yaml
 .dockerignore
 .phpunit.result.cache
 Homestead.json
