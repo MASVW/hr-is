@@ -16,7 +16,6 @@ class AssignComponent extends Component
 {
     public string $recruitmentId;
     public RecruitmentRequest $recruitment;
-    public $actor;
 
     public ?string $pic_id = null;
 
@@ -33,7 +32,6 @@ class AssignComponent extends Component
 
         $this->hrDeptId = Department::whereRaw('UPPER(TRIM(name)) = ?', ['HRD'])->value('id');
 
-        // Ambil user role=Staff yang berada di departemen HR (many-to-many)
         $this->hrStaff = User::query()
             ->whereHas('roles', fn ($q) => $q->whereRaw('UPPER(TRIM(name)) = ?', ['STAFF']))
             ->when($this->hrDeptId, fn ($q) =>
@@ -44,7 +42,6 @@ class AssignComponent extends Component
             ->get()
             ->toArray();
 
-        // preselect jika sudah ada PIC
         $this->pic_id = $this->recruitment->pic_id;
     }
 
@@ -81,7 +78,7 @@ class AssignComponent extends Component
                 'title' => $this->recruitment->title,
             ],
             actorId: (string) ($actor->id ?? 'system'),
-            actorName: $auth()->user()->name ?? 'Manager HRD',
+            actorName: 'Manager HRD',
             department: $this->recruitment->department->name ?? null,
         );
 
