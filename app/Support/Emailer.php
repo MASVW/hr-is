@@ -36,7 +36,7 @@ class Emailer
      */
     public static function approval(
         User|array|string $approver,
-        string $type,            // gunakan bila Mailable/DB butuh; kalau tidak, hilangkan saja
+        string $type,
         Model $approvable,
         string $subject,
         string $message,
@@ -45,30 +45,40 @@ class Emailer
         ?string $userId = null,
         ?int $expiresIn = null,
     ): void {
-        // Derive recruitmentId dari model jika kosong
+        // Ambil ID request & user
         $derivedRecruitmentId = $recruitmentId ?: (string) ($approvable->getRouteKey() ?? $approvable->getKey());
 
-        // Derive userId dari approver kalau dia instance User
         $derivedUserId = $userId;
         if ($derivedUserId === null && $approver instanceof User) {
             $derivedUserId = (string) ($approver->getRouteKey() ?? $approver->getKey());
         }
-
         if ($derivedUserId === null || $derivedUserId === '') {
-            throw new InvalidArgumentException('userId wajib diisi jika $approver bukan instance User.');
+            throw new \InvalidArgumentException('userId wajib diisi jika $approver bukan instance User.');
         }
 
-        $approveUrl = self::generateApprovalUrl('approvals.approve', $derivedRecruitmentId, $derivedUserId, $expiresIn);
-        $rejectUrl  = self::generateApprovalUrl('approvals.reject',  $derivedRecruitmentId, $derivedUserId, $expiresIn);
+        // Pilih route sesuai role & tipe
+        $isRecruitment = $approvable instanceof \App\Models\RecruitmentRequest;
+        $isPenambahan  = $isRecruitment && strtolower((string)$approvable->recruitment_type) === 'penambahan';
+        $isDirutRecip  = $approver instanceof User && $approver->hasRole('Dirut');
+
+        if ($isPenambahan && $isDirutRecip) {
+            $routeApprove = 'approvals.dirut.approve';
+            $routeReject  = 'approvals.dirut.reject';
+        } else {
+            $routeApprove = 'approvals.approve';
+            $routeReject  = 'approvals.reject';
+        }
+
+        // SIGN RELATIVE -> jadikan ABSOLUTE (sesuai pola lama, valid untuk signed:relative)
+        $approveUrl = self::generateApprovalUrl($routeApprove, $derivedRecruitmentId, $derivedUserId, $expiresIn);
+        $rejectUrl  = self::generateApprovalUrl($routeReject,  $derivedRecruitmentId, $derivedUserId, $expiresIn);
 
         Mail::to($approver)->queue(new ApprovalMail(
             subjectLine: $subject,
             greeting: __('emails.greeting', [], 'id'),
             messageLine: $message,
-            // Kalau ingin memakai $context di template, tambahkan properti/argumen di ApprovalMail
-            // context: $context,
-            approveUrl: $approveUrl,
-            rejectUrl:  $rejectUrl,
+            approveUrl:  $approveUrl,
+            rejectUrl:   $rejectUrl,
         ));
     }
 

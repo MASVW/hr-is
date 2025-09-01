@@ -14,9 +14,26 @@ Route::middleware('signed:relative')->group(function () {
         ->name('approvals.approve');
     Route::get('/approvals/{recruitmentId}/{userId}/reject',  [\App\Http\Controllers\ApprovalActionController::class, 'reject'])
         ->name('approvals.reject');
+
+    // DIRUT (khusus recruitment_type = "penambahan")
+    Route::get('/approvals/dirut/{recruitmentId}/{userId}/approve', [\App\Http\Controllers\DirutApprovalController::class, 'approve'])
+        ->name('approvals.dirut.approve');
+
+    // Livewire page (form alasan reject)
+    Route::get('/approvals/dirut/{recruitmentId}/{userId}/reject', \App\Livewire\DirutRejectComponent::class)
+        ->name('approvals.dirut.reject');
 });
 
 
+Route::get('/__debug/signed', function () {
+    $u = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+        'approvals.approve',
+        now()->addMinutes(10),
+        ['recruitmentId' => 'test', 'userId' => '1']
+    );
+    \Illuminate\Support\Facades\Log::info('GEN_URL='.$u.' APP_URL='.config('app.url'));
+    return $u;
+});
 Route::get('/__debug/signed', function () {
     $u = \Illuminate\Support\Facades\URL::temporarySignedRoute(
         'approvals.approve',

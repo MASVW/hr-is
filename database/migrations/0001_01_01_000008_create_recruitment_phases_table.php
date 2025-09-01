@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('recruitment_phases', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->enum('status', ['progress', 'finish']);
+            $table->enum('status', ['progress', 'finish', 'rejected']);
             $table->datetime('started_at')->nullable();
             $table->datetime('finish_at')->nullable();
             $table->json('form_data')->nullable();

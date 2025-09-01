@@ -68,15 +68,21 @@ class RecruitmentPhaseResource extends Resource
                         return '-';
                     }),
                 Tables\Columns\IconColumn::make('status')
-                    ->label('Status')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-clock')
-                    ->trueColor('success')
-                    ->falseColor('warning')
+                    ->label('Status Approval')
                     ->alignment(Alignment::Center)
-                    ->tooltip(fn(Model $record): string => ucfirst($record->status))
-                    ->getStateUsing(fn($record) => $record->status === 'approved'),
+                    ->tooltip(fn ($record) => ucfirst($record->status ?? 'Pending'))
+                    ->icon(fn ($record) => match ($record->status) {
+                        'approved', 'finish'   => 'heroicon-o-check-circle',
+                        'progress'             => 'heroicon-o-clock',
+                        'rejected'             => 'heroicon-o-x-circle',
+                        default                => 'heroicon-o-clock',
+                    })
+                    ->color(fn ($record) => match ($record->status) {
+                        'approved', 'finish'   => 'success',
+                        'progress'             => 'warning',
+                        'rejected'             => 'danger',
+                        default                => 'gray',
+                    }),
                 Tables\Columns\TextColumn::make('finishAt')
                     ->dateTime()
                     ->sortable()
@@ -102,9 +108,15 @@ class RecruitmentPhaseResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make()
                     ->hiddenLabel()
-                    ->disabled(fn(Model $record): bool => collect($record->form_data['phases'] ?? [])
-                        ->contains(fn($phase) => ($phase['status'] ?? null) === 'progress' && (($phase['name'] ?? '') === 'Requesting' || ($phase['name'] ?? '') === 'Approval by Stakeholder')
-                    ))
+                    ->disabled(fn(Model $record): bool =>
+                    collect($record->form_data['phases'] ?? [])
+                        ->contains(fn($phase) =>
+                            (($phase['status'] ?? null) === 'progress'
+                                && in_array(($phase['name'] ?? ''), ['Requesting', 'Approval by Stakeholder'])
+                            )
+                            || ($phase['status'] ?? null) === 'cancel'
+                        )
+                    )
             ])
             ->recordUrl(fn(Model $record) => collect($record->form_data['phases'] ?? [])
                 ->contains(fn($phase) => ($phase['status'] ?? null) === 'progress' && (($phase['name'] ?? '') === 'Requesting' || ($phase['name'] ?? '') === 'Approval by Stakeholder'))

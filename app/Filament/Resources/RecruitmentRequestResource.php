@@ -77,13 +77,22 @@ class RecruitmentRequestResource extends Resource
                     })
                     ->alignment(Alignment::Center)
                     ->tooltip('Tekan untuk melihat detail'),
-                Tables\Columns\IconColumn::make('approval.status')
-                    ->label('Status Approval')->boolean()
-                    ->trueIcon('heroicon-o-check-circle')->falseIcon('heroicon-o-clock')
-                    ->trueColor('success')->falseColor('danger')
+                Tables\Columns\IconColumn::make('status')
+                    ->label('Status Approval')
                     ->alignment(Alignment::Center)
-                    ->tooltip(fn(Model $record): string => ucfirst($record->approval->status ?? 'pending'))
-                    ->getStateUsing(fn ($record) => ($record->approval->status ?? null) === 'approved'),
+                    ->tooltip(fn ($record) => ucfirst($record->status ?? 'Pending'))
+                    ->icon(fn ($record) => match ($record->status) {
+                        'approved', 'finish'   => 'heroicon-o-check-circle',
+                        'progress'             => 'heroicon-o-clock',
+                        'rejected'             => 'heroicon-o-x-circle',
+                        default                => 'heroicon-o-clock', // pending
+                    })
+                    ->color(fn ($record) => match ($record->status) {
+                        'approved', 'finish'   => 'success',
+                        'progress'             => 'warning',
+                        'rejected'             => 'danger',
+                        default                => 'gray', // pending
+                    })
             ])
             ->actions([
                 Tables\Actions\Action::make('view_request')

@@ -37,32 +37,32 @@ class RecruitmentRequest extends Model
 
     public function requester(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'requested_by');
+        return $this->belongsTo(User::class, 'requested_by', 'id');
     }
 
     public function approval(): BelongsTo
     {
-        return $this->belongsTo(Approval::class, 'approval_id');
+        return $this->belongsTo(Approval::class, 'approval_id', 'id');
     }
 
     public function recruitmentApproval(): HasOne
     {
-        return $this->hasOne(Approval::class, 'request_id');
+        return $this->hasOne(Approval::class, 'request_id', 'id');
     }
 
     public function recruitmentPhase(): HasOne
     {
-        return $this->hasOne(RecruitmentPhase::class, 'request_id');
+        return $this->hasOne(RecruitmentPhase::class, 'request_id', 'id');
     }
 
     public function phase(): BelongsTo
     {
-        return $this->belongsTo(RecruitmentPhase::class, 'phase_id');
+        return $this->belongsTo(RecruitmentPhase::class, 'phase_id', 'id');
     }
 
     public function pic(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'pic_id');
+        return $this->belongsTo(User::class, 'pic_id', 'id');
     }
 }
 

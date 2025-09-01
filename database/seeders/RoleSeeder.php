@@ -38,6 +38,7 @@ class RoleSeeder extends Seeder
         $r5 = Role::create(['name' => 'Director']);
         $r6 = Role::create(['name' => 'SPV']);
         $r7 = Role::create(['name' => 'SU']);
+        $r7 = Role::create(['name' => 'Dirut']);
 
 
         $r1->givePermissionTo('read');

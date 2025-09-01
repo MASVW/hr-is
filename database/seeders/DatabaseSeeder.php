@@ -189,21 +189,22 @@ class DatabaseSeeder extends Seeder
         };
 
         // Data dummy untuk beberapa departemen
-        $makeSamples($departmentIT,  $admin->id, 10);
+//        $makeSamples($departmentIT,  $admin->id, 10);
         $makeSamples($departmentHR,  $admin->id, 10);
         $makeSamples($departmentAcc, $admin->id, 10);
         $makeSamples($departmentProc,$admin->id, 10);
 
 
-//        $mrMustika = User::create([
-//            'id'       => (string) Str::uuid(),
+        $mrMustika = User::create([
+            'id'       => (string) Str::uuid(),
 //            'name'     => 'Mr. Mustika Lautan',
-//            'email'    => 'mustika@indraangkola.com',
-//            'password' => Hash::make('password'),
-//        ]);
-//        $mrMustika->departments()->syncWithoutDetaching([$departmentIT->id]);
-//        $mrMustika->departments()->syncWithoutDetaching([$departmentTop->id]);
-//        $mrMustika->assignRole('Director');
+            'name'     => 'Testing Dirut',
+            'email'    => 'samuelzakaria0000@gmail.com',
+            'password' => Hash::make('password'),
+        ]);
+        $mrMustika->departments()->syncWithoutDetaching([$departmentIT->id]);
+        $mrMustika->departments()->syncWithoutDetaching([$departmentTop->id]);
+        $mrMustika->assignRole('Dirut');
 
 //        $msMeriawati = User::create([
 //            'id'       => (string) Str::uuid(),

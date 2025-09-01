@@ -18,7 +18,7 @@ class RecruitmentPhase extends Model
     protected $casts = [
         'form_data' => 'array',
         'started_at' => 'datetime',
-        'finishAt' => 'datetime',
+        'finish_at'  => 'datetime',
     ];
 
     protected $fillable = [

@@ -25,22 +25,31 @@ class AssignComponent extends Component
     // simpan id departemen HR (tidak dipakai di rules lagi)
     private ?string $hrDeptId = null;
 
+    private ?User $manager = null;
+
     public function mount(string $recruitmentId): void
     {
         $this->recruitmentId = $recruitmentId;
-        $this->recruitment   = RecruitmentRequest::with('department')->findOrFail($recruitmentId);
+        $this->recruitment = RecruitmentRequest::with('department')->findOrFail($recruitmentId);
 
         $this->hrDeptId = Department::whereRaw('UPPER(TRIM(name)) = ?', ['HRD'])->value('id');
 
         $this->hrStaff = User::query()
-            ->whereHas('roles', fn ($q) => $q->whereRaw('UPPER(TRIM(name)) = ?', ['STAFF']))
-            ->when($this->hrDeptId, fn ($q) =>
-            $q->whereHas('departments', fn ($d) => $d->where('departments.id', $this->hrDeptId))
+            ->whereHas('roles', fn($q) => $q->whereRaw('UPPER(TRIM(name)) = ?', ['STAFF']))
+            ->when($this->hrDeptId, fn($q) => $q->whereHas('departments', fn($d) => $d->where('departments.id', $this->hrDeptId))
             )
             ->select('id', 'name', 'email')
             ->orderBy('name')
             ->get()
             ->toArray();
+
+        $this->manager = User::query()
+            ->whereHas('roles', fn($q) => $q->whereRaw('UPPER(TRIM(name)) = ?', ['DIRECTOR']))
+            ->when($this->hrDeptId, fn($q) =>
+            $q->whereHas('departments', fn($d) => $d->where('departments.id', $this->hrDeptId))
+            )
+            ->select('id', 'name', 'email')
+            ->first();
 
         $this->pic_id = $this->recruitment->pic_id;
     }
@@ -68,17 +77,19 @@ class AssignComponent extends Component
             'pic_id' => $this->pic_id,
         ])->save();
 
+        $pic = User::findOrFail($this->pic_id);
+
         session()->flash('success', 'PIC berhasil ditetapkan.');
 
         Notify::assignPICActivity(
-            recipients: [$this->pic_id],
-            recruitmentId: (string) $this->recruitment->getKey(),
+            recipients: [$pic],
+            recruitmentId: (string)$this->recruitment->getKey(),
             action: 'assignTo',
             context: [
                 'title' => $this->recruitment->title,
             ],
-            actorId: (string) ($actor->id ?? 'system'),
-            actorName: 'Manager HRD',
+            actorId: (string)($this->manager?->id ?? 'system'),
+            actorName: $this->manager?->name ?? 'Manager HRD',
             department: $this->recruitment->department->name ?? null,
         );
 

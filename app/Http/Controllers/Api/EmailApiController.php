@@ -11,6 +11,9 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Collection;
+use App\Models\RecruitmentRequest;
 
 class EmailApiController extends Controller
 {
@@ -82,22 +85,19 @@ class EmailApiController extends Controller
     public function approval(Request $request)
     {
         $data = $request->validate([
-            'approver'           => ['sometimes'],
-            'approver_user_ids'  => ['sometimes','array'],
-            'approver_user_ids.*'=> ['integer','exists:users,id'],
+            'approver'             => ['sometimes'],
+            'approver_user_ids'    => ['sometimes','array'],
+            'approver_user_ids.*'  => ['exists:users,id'], // UUID/string OK
 
             'type'               => ['required','string','max:100'],
-
             'approvable_type'    => ['required','string','max:255'],
             'approvable_id'      => ['required'],
-
             'subject'            => ['required','string','max:200'],
             'message'            => ['required','string'],
-
             'context'            => ['sometimes','array'],
 
             'recruitmentId'      => ['required','string','max:100'],
-            'userId'             => ['required','string','max:100'],
+            'userId'             => ['nullable','string','max:100'], // opsional
 
             'expiresIn'          => ['nullable','integer','min:1','max:1440'],
         ]);
@@ -108,19 +108,22 @@ class EmailApiController extends Controller
         }
 
         $approvable = $this->resolveApprovable($data['approvable_type'], $data['approvable_id']);
+        if (! $approvable instanceof \App\Models\RecruitmentRequest) {
+            abort(422, 'approvable_type must be RecruitmentRequest for this flow');
+        }
 
         $queued = 0;
         foreach ($approvers as $to) {
             try {
                 Emailer::approval(
-                    approver:    $to,
-                    type:        $data['type'],
-                    approvable:  $approvable,
-                    subject:     $data['subject'],
-                    message:     $data['message'],
-                    context:     $data['context'] ?? [],
+                    approver:      $to,
+                    type:          $data['type'],
+                    approvable:    $approvable,
+                    subject:       $data['subject'],
+                    message:       $data['message'],
+                    context:       $data['context'] ?? [],
                     recruitmentId: $data['recruitmentId'],
-                    userId:        $data['userId'],
+                    userId:        $data['userId'] ?? null,
                     expiresIn:     $data['expiresIn'] ?? null,
                 );
                 $queued++;
@@ -131,6 +134,8 @@ class EmailApiController extends Controller
 
         return response()->json(['ok' => true, 'queued' => $queued]);
     }
+
+
 
     /** ----------------- helpers ----------------- */
 
