@@ -190,9 +190,9 @@ class DatabaseSeeder extends Seeder
 
         // Data dummy untuk beberapa departemen
 //        $makeSamples($departmentIT,  $admin->id, 10);
-        $makeSamples($departmentHR,  $admin->id, 10);
-        $makeSamples($departmentAcc, $admin->id, 10);
-        $makeSamples($departmentProc,$admin->id, 10);
+//        $makeSamples($departmentHR,  $admin->id, 10);
+//        $makeSamples($departmentAcc, $admin->id, 10);
+//        $makeSamples($departmentProc,$admin->id, 10);
 
 
         $mrMustika = User::create([
