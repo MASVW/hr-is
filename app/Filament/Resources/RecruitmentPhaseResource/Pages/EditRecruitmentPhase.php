@@ -7,12 +7,15 @@ use App\Models\Department;
 use App\Models\User;
 use App\Support\Emailer;
 use App\Support\Notify;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Tabs;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification as FNotification;
 use Filament\Resources\Pages\EditRecord;
@@ -32,43 +35,39 @@ class EditRecruitmentPhase extends EditRecord
     public ?int $editedIndex = null;
 
     public ?string $department = null;
-    public ?string $departmentId = null;   // UUID
-    public ?string $hrDepartmentId = null; // UUID
+    public ?string $departmentId = null;
+    public ?string $hrDepartmentId = null;
 
     public array $accumulatedChanges = [];
     public array $latestChanges = [];
 
-    /** Key yang tidak disertakan dalam diff */
+    /** key yang tidak disertakan ketika diff */
     protected array $diffExcludeKeys = ['form_data', 'status'];
 
-    /** Pastikan department tersedia lebih awal */
     protected function beforeFill(): void
     {
         $r = $this->getRecord();
 
-        // Ambil nama & id department dari recruitment request (request masih single-department)
         $this->department   = $r?->recruitmentRequest?->department?->name ?? null;
         $this->departmentId = $r?->recruitmentRequest?->department?->id   ?? null;
-
-        // Ambil ID dept HR secara aman (null jika tidak ada)
         $this->hrDepartmentId = Department::where('name', 'HUMAN RESOURCE')->value('id');
     }
 
     public function form(Form $form): Form
     {
+        // Tambahkan 'pending' supaya mundur fase bisa dilakukan eksplisit
         $statusOption = [
             'finish'   => 'Finished',
             'progress' => 'On Progress',
+            'pending'  => 'Pending',
         ];
 
         return $form
             ->schema([
-                TextInput::make('status')
-                    ->disabled()
+                TextInput::make('status') // status kolom model utama (bukan per-fase)
+                ->disabled()
                     ->dehydrated(false)
-                    ->afterStateHydrated(function ($component) {
-                        $component->state(fn ($state) => ucfirst($state));
-                    })
+                    ->afterStateHydrated(fn ($component) => $component->state(fn ($state) => ucfirst((string) $state)))
                     ->required()
                     ->maxLength(255),
 
@@ -81,7 +80,7 @@ class EditRecruitmentPhase extends EditRecord
                         $phases = $this->record->form_data['phases'] ?? [];
                         foreach ($phases as $phase) {
                             if (($phase['status'] ?? null) === 'progress') {
-                                return "Dalam Tahap {$phase['name']}" ?? '-';
+                                return 'Dalam Tahap ' . ($phase['name'] ?? '-');
                             }
                         }
                         return '-';
@@ -89,327 +88,182 @@ class EditRecruitmentPhase extends EditRecord
                     ->statePath('form_data')
                     ->schema([
                         Tabs::make('Phases')
-                            ->tabs([
-                                Tabs\Tab::make('CV Collection')
-                                    ->statePath('phases.2')
-                                    ->icon('heroicon-o-document-text')
-                                    ->badge(fn ($record) => ucfirst($record->form_data['phases'][2]['status'] ?? ''))
-                                    ->badgeColor(fn ($record) => match ($record->form_data['phases'][2]['status'] ?? null) {
-                                        'progress' => 'success',
-                                        'finish' => 'primary',
-                                        default => 'gray'
-                                    })
-                                    ->schema([
-                                        Select::make('status')
-                                            ->dehydrated(false)
-                                            ->live()
-                                            ->reactive()
-                                            ->options($statusOption)
-                                            ->afterStateUpdated(function (string $state, Set $set, Get $get) {
-                                                $this->onPhaseStatusChange(2, $state, $get, $set);
-                                            }),
-                                        TextInput::make('totalCV')
-                                            ->label('Curriculum Vitae diterima')
-                                            ->numeric(),
-                                        Textarea::make('note'),
-                                        Textarea::make('reviseNotes')
-                                            ->dehydrated(true)
-                                            ->afterStateHydrated(fn ($component) => $component->state(''))
-                                            ->label('Revise Notes')
-                                            ->helperText('Wajib diisi saat mengubah dari Finished ke Pending / On Progress.')
-                                            ->debounce(300)
-                                            ->live()
-                                            ->reactive()
-                                            ->required(fn () => $this->editedIndex === 2 && $this->pendingNewStatus !== null)
-                                            ->hidden(fn () => $this->editedIndex !== 2)
-                                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                                if (filled($state)) {
-                                                    $this->tryApplyPendingChange($get, $set);
-                                                }
-                                            })
-                                    ])
-                                    ->dehydrated(true),
-
-                                Tabs\Tab::make('CV Screening')
-                                    ->statePath('phases.3')
-                                    ->icon('heroicon-o-magnifying-glass')
-                                    ->badge(fn ($record) => ucfirst($record->form_data['phases'][3]['status'] ?? ''))
-                                    ->badgeColor(fn ($record) => match ($record->form_data['phases'][3]['status'] ?? null) {
-                                        'progress' => 'success',
-                                        'finish' => 'primary',
-                                        default => 'gray'
-                                    })
-                                    ->schema([
-                                        Select::make('status')
-                                            ->dehydrated(false)
-                                            ->live()
-                                            ->reactive()
-                                            ->options($statusOption)
-                                            ->afterStateUpdated(function (string $state, Set $set, Get $get) {
-                                                $this->onPhaseStatusChange(3, $state, $get, $set);
-                                            }),
-                                        TextInput::make('approvedCV')
-                                            ->label('Curriculum Vitae Diterima')
-                                            ->numeric(),
-                                        Textarea::make('note'),
-                                        Textarea::make('reviseNotes')
-                                            ->dehydrated(true)
-                                            ->afterStateHydrated(fn ($component) => $component->state(''))
-                                            ->label('Revise Notes')
-                                            ->helperText('Wajib diisi saat mengubah dari Finished ke Pending / On Progress.')
-                                            ->debounce(300)
-                                            ->live()
-                                            ->reactive()
-                                            ->required(fn () => $this->editedIndex === 3 && $this->pendingNewStatus !== null)
-                                            ->hidden(fn () => $this->editedIndex !== 3)
-                                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                                if (filled($state)) {
-                                                    $this->tryApplyPendingChange($get, $set);
-                                                }
-                                            })
-                                    ])
-                                    ->dehydrated(true),
-
-                                Tabs\Tab::make('Check Background')
-                                    ->statePath('phases.4')
-                                    ->icon('heroicon-o-shield-check')
-                                    ->badge(fn ($record) => ucfirst($record->form_data['phases'][4]['status'] ?? ''))
-                                    ->badgeColor(fn ($record) => match ($record->form_data['phases'][4]['status'] ?? null) {
-                                        'progress' => 'success',
-                                        'finish' => 'primary',
-                                        default => 'gray'
-                                    })
-                                    ->schema([
-                                        Select::make('status')
-                                            ->dehydrated(false)
-                                            ->live()
-                                            ->reactive()
-                                            ->options($statusOption)
-                                            ->afterStateUpdated(function (string $state, Set $set, Get $get) {
-                                                $this->onPhaseStatusChange(4, $state, $get, $set);
-                                            }),
-                                        TextInput::make('candidate')->numeric(),
-                                        TextInput::make('checked')->numeric(),
-                                        TextInput::make('passed')->numeric(),
-                                        Textarea::make('note'),
-                                        Textarea::make('reviseNotes')
-                                            ->dehydrated(true)
-                                            ->afterStateHydrated(fn ($component) => $component->state(''))
-                                            ->label('Revise Notes')
-                                            ->helperText('Wajib diisi saat mengubah dari Finished ke Pending / On Progress.')
-                                            ->debounce(300)
-                                            ->live()
-                                            ->reactive()
-                                            ->required(fn () => $this->editedIndex === 4 && $this->pendingNewStatus !== null)
-                                            ->hidden(fn () => $this->editedIndex !== 4)
-                                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                                if (filled($state)) {
-                                                    $this->tryApplyPendingChange($get, $set);
-                                                }
-                                            })
-                                    ])
-                                    ->dehydrated(true),
-
-                                Tabs\Tab::make('Psychology Assessment')
-                                    ->statePath('phases.5')
-                                    ->icon('heroicon-o-clipboard-document-check')
-                                    ->badge(fn ($record) => ucfirst($record->form_data['phases'][5]['status'] ?? ''))
-                                    ->badgeColor(fn ($record) => match ($record->form_data['phases'][5]['status'] ?? null) {
-                                        'progress' => 'success',
-                                        'finish' => 'primary',
-                                        default => 'gray'
-                                    })
-                                    ->schema([
-                                        Select::make('status')
-                                            ->dehydrated(false)
-                                            ->live()
-                                            ->reactive()
-                                            ->options($statusOption)
-                                            ->afterStateUpdated(function (string $state, Set $set, Get $get) {
-                                                $this->onPhaseStatusChange(5, $state, $get, $set);
-                                            }),
-                                        TextInput::make('candidate')->numeric(),
-                                        TextInput::make('finished')->numeric(),
-                                        TextInput::make('passed')->numeric(),
-                                        Textarea::make('note'),
-                                        Textarea::make('reviseNotes')
-                                            ->dehydrated(true)
-                                            ->afterStateHydrated(fn ($component) => $component->state(''))
-                                            ->label('Revise Notes')
-                                            ->helperText('Wajib diisi saat mengubah dari Finished ke Pending / On Progress.')
-                                            ->debounce(300)
-                                            ->live()
-                                            ->reactive()
-                                            ->required(fn () => $this->editedIndex === 5 && $this->pendingNewStatus !== null)
-                                            ->hidden(fn () => $this->editedIndex !== 5)
-                                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                                if (filled($state)) {
-                                                    $this->tryApplyPendingChange($get, $set);
-                                                }
-                                            })
-                                    ])->dehydrated(true),
-
-                                Tabs\Tab::make('HRD Interview')
-                                    ->statePath('phases.6')
-                                    ->icon('heroicon-o-chat-bubble-left-right')
-                                    ->badge(fn ($record) => ucfirst($record->form_data['phases'][6]['status'] ?? ''))
-                                    ->badgeColor(fn ($record) => match ($record->form_data['phases'][6]['status'] ?? null) {
-                                        'progress' => 'success',
-                                        'finish' => 'primary',
-                                        default => 'gray'
-                                    })
-                                    ->schema([
-                                        Select::make('status')
-                                            ->dehydrated(false)
-                                            ->live()
-                                            ->reactive()
-                                            ->options($statusOption)
-                                            ->afterStateUpdated(function (string $state, Set $set, Get $get) {
-                                                $this->onPhaseStatusChange(6, $state, $get, $set);
-                                            }),
-                                        TextInput::make('interviewed')->numeric(),
-                                        TextInput::make('candidate')->numeric(),
-                                        TextInput::make('passed')->numeric(),
-                                        Textarea::make('note'),
-                                        Textarea::make('reviseNotes')
-                                            ->dehydrated(true)
-                                            ->afterStateHydrated(fn ($component) => $component->state(''))
-                                            ->label('Revise Notes')
-                                            ->helperText('Wajib diisi saat mengubah dari Finished ke Pending / On Progress.')
-                                            ->debounce(300)
-                                            ->live()
-                                            ->reactive()
-                                            ->required(fn () => $this->editedIndex === 6 && $this->pendingNewStatus !== null)
-                                            ->hidden(fn () => $this->editedIndex !== 6)
-                                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                                if (filled($state)) {
-                                                    $this->tryApplyPendingChange($get, $set);
-                                                }
-                                            })
-                                    ])
-                                    ->dehydrated(true),
-
-                                Tabs\Tab::make('Interview with User')
-                                    ->statePath('phases.7')
-                                    ->icon('heroicon-o-user-group')
-                                    ->badge(fn ($record) => ucfirst($record->form_data['phases'][7]['status'] ?? ''))
-                                    ->badgeColor(fn ($record) => match ($record->form_data['phases'][7]['status'] ?? null) {
-                                        'progress' => 'success',
-                                        'finish' => 'primary',
-                                        default => 'gray'
-                                    })
-                                    ->schema([
-                                        Select::make('status')
-                                            ->dehydrated(false)
-                                            ->live()
-                                            ->reactive()
-                                            ->options($statusOption)
-                                            ->afterStateUpdated(function (string $state, Set $set, Get $get) {
-                                                $this->onPhaseStatusChange(7, $state, $get, $set);
-                                            }),
-                                        TextInput::make('interviewed')->numeric(),
-                                        TextInput::make('candidate')->numeric(),
-                                        TextInput::make('passed')->numeric(),
-                                        Textarea::make('note'),
-                                        Textarea::make('reviseNotes')
-                                            ->dehydrated(true)
-                                            ->afterStateHydrated(fn ($component) => $component->state(''))
-                                            ->label('Revise Notes')
-                                            ->helperText('Wajib diisi saat mengubah dari Finished ke Pending / On Progress.')
-                                            ->debounce(300)
-                                            ->live()
-                                            ->reactive()
-                                            ->required(fn () => $this->editedIndex === 7 && $this->pendingNewStatus !== null)
-                                            ->hidden(fn () => $this->editedIndex !== 7)
-                                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                                if (filled($state)) {
-                                                    $this->tryApplyPendingChange($get, $set);
-                                                }
-                                            })
-                                    ])
-                                    ->dehydrated(true),
-
-                                Tabs\Tab::make('Offering')
-                                    ->statePath('phases.8')
-                                    ->icon('heroicon-o-briefcase')
-                                    ->badge(fn ($record) => ucfirst($record->form_data['phases'][8]['status'] ?? ''))
-                                    ->badgeColor(fn ($record) => match ($record->form_data['phases'][8]['status'] ?? null) {
-                                        'progress' => 'success',
-                                        'finish' => 'primary',
-                                        default => 'gray'
-                                    })
-                                    ->schema([
-                                        Select::make('status')
-                                            ->dehydrated(false)
-                                            ->live()
-                                            ->reactive()
-                                            ->options($statusOption)
-                                            ->afterStateUpdated(function (string $state, Set $set, Get $get) {
-                                                $this->onPhaseStatusChange(8, $state, $get, $set);
-                                            }),
-                                        TextInput::make('candidate')->numeric(),
-                                        TextInput::make('offered')->numeric(),
-                                        TextInput::make('agreed')->numeric(),
-                                        Textarea::make('note'),
-                                        Textarea::make('reviseNotes')
-                                            ->dehydrated(true)
-                                            ->afterStateHydrated(fn ($component) => $component->state(''))
-                                            ->label('Revise Notes')
-                                            ->helperText('Wajib diisi saat mengubah dari Finished ke Pending / On Progress.')
-                                            ->debounce(300)
-                                            ->live()
-                                            ->reactive()
-                                            ->required(fn () => $this->editedIndex === 8 && $this->pendingNewStatus !== null)
-                                            ->hidden(fn () => $this->editedIndex !== 8)
-                                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                                if (filled($state)) {
-                                                    $this->tryApplyPendingChange($get, $set);
-                                                }
-                                            })
-                                    ])
-                                    ->dehydrated(true),
-
-                                Tabs\Tab::make('Onboarding')
-                                    ->statePath('phases.9')
-                                    ->icon('heroicon-o-rocket-launch')
-                                    ->badge(fn ($record) => ucfirst($record->form_data['phases'][9]['status'] ?? ''))
-                                    ->badgeColor(fn ($record) => match ($record->form_data['phases'][9]['status'] ?? null) {
-                                        'progress' => 'success',
-                                        'finish' => 'primary',
-                                        default => 'gray'
-                                    })
-                                    ->schema([
-                                        Select::make('status')
-                                            ->dehydrated(false)
-                                            ->live()
-                                            ->reactive()
-                                            ->options($statusOption)
-                                            ->afterStateUpdated(function (string $state, Set $set, Get $get) {
-                                                $this->onPhaseStatusChange(9, $state, $get, $set);
-                                            }),
-                                        TextInput::make('onboarded')->numeric(),
-                                        Textarea::make('note'),
-                                        Textarea::make('reviseNotes')
-                                            ->dehydrated(true)
-                                            ->afterStateHydrated(fn ($component) => $component->state(''))
-                                            ->label('Revise Notes')
-                                            ->helperText('Wajib diisi saat mengubah dari Finished ke Pending / On Progress.')
-                                            ->debounce(300)
-                                            ->live()
-                                            ->reactive()
-                                            ->required(fn () => $this->editedIndex === 9 && $this->pendingNewStatus !== null)
-                                            ->hidden(fn () => $this->editedIndex !== 9)
-                                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
-                                                if (filled($state)) {
-                                                    $this->tryApplyPendingChange($get, $set);
-                                                }
-                                            })
-                                    ])
-                                    ->dehydrated(true),
-                            ])
-                            ->reactive()
-                    ])
+                            ->tabs(fn (Get $get) => $this->buildDynamicPhaseTabs($get, $statusOption))
+                            ->reactive(),
+                    ]),
             ]);
+    }
+
+    /**
+     * Bangun tabs fase secara dinamis dari form_data.phases
+     */
+    protected function buildDynamicPhaseTabs(Get $get, array $statusOption): array
+    {
+        $tabs = [];
+        $phases = $this->getRecord()?->form_data['phases'] ?? [];
+        foreach ($phases as $i => $phase) {
+            $idx = $i;
+
+            $tabs[] = Tabs\Tab::make($phase['name'] ?? ('Phase #' . ($idx + 1)))
+                ->statePath("phases.$idx")
+                ->icon('heroicon-o-document-text')
+                ->badge(function ($record) use ($idx) {
+                    $st = data_get($record->form_data, "phases.$idx.status");
+                    return $st ? ucfirst($st) : '';
+                })
+                ->badgeColor(function ($record) use ($idx) {
+                    return match (data_get($record->form_data, "phases.$idx.status")) {
+                        'progress' => 'success',
+                        'finish'   => 'primary',
+                        default    => 'gray',
+                    };
+                })
+                ->schema($this->makePhaseFields($idx, (array) $phase, $statusOption))
+                ->dehydrated(true);
+        }
+
+        return $tabs;
+    }
+
+    /**
+     * Tentukan field schema untuk 1 fase secara dinamis
+     */
+    protected function makePhaseFields(int $index, array $phase, array $statusOption): array
+    {
+        $fields = [];
+
+        // --- Field STATUS (selalu ada) ---
+        $fields[] = Select::make('status')
+            ->dehydrated(false) // status diproses via onPhaseStatusChange
+            ->live()
+            ->reactive()
+            ->options($statusOption)
+            ->afterStateUpdated(function (string $state, Set $set, Get $get) use ($index) {
+                $this->onPhaseStatusChange($index, $state, $get, $set);
+            });
+
+        // --- Field umum ---
+        $fields[] = Textarea::make('note')->label('Note')->columnSpanFull();
+
+        // --- Revise Notes (muncul hanya saat perlu) ---
+        $fields[] = Textarea::make('reviseNotes')
+            ->dehydrated(true) // kita tangkap reason di handleRecordUpdate/onPhaseStatusChange
+            ->afterStateHydrated(fn ($component) => $component->state(''))
+            ->label('Revise Notes')
+            ->helperText('Wajib diisi saat mengubah dari Finished ke Pending / On Progress.')
+            ->debounce(300)
+            ->live()
+            ->reactive()
+            ->required(fn () => $this->editedIndex === $index && $this->pendingNewStatus !== null)
+            ->hidden(fn () => $this->editedIndex !== $index)
+            ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                if (filled($state)) {
+                    $this->tryApplyPendingChange($get, $set);
+                }
+            });
+
+        // --- Field lainnya dinamis dari key yang ada ---
+        // abaikan beberapa key yang tidak diedit langsung atau sudah ditangani khusus
+        $ignored = ['name', 'status', 'note', 'updatedAt', 'reviseNotes', 'form_data'];
+
+        foreach ($phase as $key => $value) {
+            if (in_array($key, $ignored, true)) {
+                continue;
+            }
+
+            // case khusus yang sering muncul
+            if ($key === 'isApproved') {
+                $fields[] = Toggle::make($key)->label('Approved')->dehydrated(true);
+                continue;
+            }
+
+            if ($key === 'candidate' && is_array($value)) {
+                // kandidat array → repeater (name, position, onBoardingDate)
+                $fields[] = Repeater::make('candidate')
+                    ->label('Candidate')
+                    ->schema([
+                        TextInput::make('name')->label('Name')->maxLength(150),
+                        TextInput::make('position')->label('Position')->maxLength(150),
+                        DatePicker::make('onBoardingDate')->label('On Boarding Date'),
+                    ])
+                    ->collapsible()
+                    ->grid(3)
+                    ->dehydrated(true)
+                    ->columns(3);
+                continue;
+            }
+
+            if (in_array($key, ['finished', 'finisihed'], true)) {
+                // typo kompatibilitas: render ke 'finished', simpan tetap dibersihkan di handleRecordUpdate
+                $fields[] = TextInput::make('finished')
+                    ->label('Finished')
+                    ->numeric()
+                    ->dehydrated(true);
+                continue;
+            }
+
+            if (is_int($value) || is_float($value) || $this->isNumericLike($value, $key)) {
+                $fields[] = TextInput::make($key)
+                    ->label($this->labelize($key))
+                    ->numeric()
+                    ->dehydrated(true);
+                continue;
+            }
+
+            if (is_bool($value)) {
+                $fields[] = Toggle::make($key)
+                    ->label($this->labelize($key))
+                    ->dehydrated(true);
+                continue;
+            }
+
+            // string default → text / textarea (panjang dipilih otomatis)
+            if (is_string($value)) {
+                $length = mb_strlen($value);
+                if ($length > 120) {
+                    $fields[] = Textarea::make($key)
+                        ->label($this->labelize($key))
+                        ->rows(3)
+                        ->dehydrated(true);
+                } else {
+                    $fields[] = TextInput::make($key)
+                        ->label($this->labelize($key))
+                        ->dehydrated(true);
+                }
+                continue;
+            }
+
+            // fallback: tampilkan sebagai text (json)
+            $fields[] = Textarea::make($key)
+                ->label($this->labelize($key))
+                ->rows(3)
+                ->helperText('Format bebas / JSON.')
+                ->dehydrated(true);
+        }
+
+        return $fields;
+    }
+
+    protected function labelize(string $key): string
+    {
+        return str($key)
+            ->replace('_', ' ')
+            ->replace('-', ' ')
+            ->replaceMatches('/([A-Z])/', ' $1')
+            ->trim()
+            ->headline()
+            ->toString();
+    }
+
+    protected function isNumericLike($v, string $key): bool
+    {
+        // beberapa key umum yang numeric
+        $knownNumeric = [
+            'totalCV','approvedCV','checked','interviewed',
+            'candidate','passed','agreed','offered','onboarded','hasChecked',
+        ];
+        if (in_array($key, $knownNumeric, true)) return true;
+        return is_string($v) && is_numeric($v);
     }
 
     protected function requiresReviseNotes(?string $oldStatus, ?string $newStatus): bool
@@ -440,9 +294,7 @@ class EditRecruitmentPhase extends EditRecord
 
     protected function appendReviseLog(array $phases, int $index, string $reason): array
     {
-        if (!isset($phases[$index])) {
-            return $phases;
-        }
+        if (!isset($phases[$index])) return $phases;
 
         $this->ensureReviseNotesArray($phases[$index]);
 
@@ -456,7 +308,6 @@ class EditRecruitmentPhase extends EditRecord
         return $phases;
     }
 
-    /** BUGFIX: jangan reset sebelum dipakai */
     protected function tryApplyPendingChange(Get $get, Set $set): void
     {
         if ($this->pendingIndex === null || $this->pendingNewStatus === null) return;
@@ -526,13 +377,13 @@ class EditRecruitmentPhase extends EditRecord
 
         $phases = $this->applyRules($dbPhases, $index, $newStatus);
 
-        // ==== DIFF REAKTIF (untuk detail_change) ====
+        // diff reaktif
         $after = $before;
         $after['phases'] = $this->sanitizePhases($phases);
         $diff = $this->diffFormData($before, $after);
         $this->accumulatedChanges = array_merge($this->accumulatedChanges, $diff);
 
-        // ==== SET STATE FORM ====
+        // set state mini (agar badge/indikator berubah langsung)
         $phases = $this->sanitizePhases($phases);
         foreach ($phases as $i => $p) {
             if (array_key_exists('status', $p)) {
@@ -540,10 +391,10 @@ class EditRecruitmentPhase extends EditRecord
             }
         }
 
-        // ==== SIMPAN ====
+        // simpan
         $this->savePhases($phases);
 
-        // ==== TENTUKAN APAKAH STATUS BERUBAH (TANPA GANTUNG PADA HASIL SAVE) ====
+        // notify
         $statusChanged = $this->phasesStatusChanged($dbPhases, $phases);
         $record->refresh();
 
@@ -586,36 +437,29 @@ class EditRecruitmentPhase extends EditRecord
         return false;
     }
 
-    /** Kumpulan id department yang relevan (HR + dept dari request) */
     protected function relatedDepartmentIds(): array
     {
         return array_values(array_filter([$this->hrDepartmentId, $this->departmentId]));
     }
 
-    /** RECIPIENTS (many-to-many departments) */
     protected function getRecipients($actor): Collection
     {
         $deptIds = $this->relatedDepartmentIds();
 
         return User::query()
             ->whereHas('roles', fn ($q) => $q->whereIn('name', ['Manager', 'Asmen']))
-            ->when(!empty($deptIds), function ($q) use ($deptIds) {
-                $q->whereHas('departments', fn ($d) => $d->whereIn('departments.id', $deptIds));
-            })
+            ->when(!empty($deptIds), fn ($q) => $q->whereHas('departments', fn ($d) => $d->whereIn('departments.id', $deptIds)))
             ->when($actor, fn ($q) => $q->where('id', '!=', $actor->getKey()))
             ->get();
     }
 
-    /** RECIPIENT EMAILS (many-to-many departments) */
     protected function getRecipientsEmail($actor): array
     {
         $deptIds = $this->relatedDepartmentIds();
 
         return User::query()
             ->whereHas('roles', fn ($q) => $q->whereIn('name', ['Manager', 'Asmen']))
-            ->when(!empty($deptIds), function ($q) use ($deptIds) {
-                $q->whereHas('departments', fn ($d) => $d->whereIn('departments.id', $deptIds));
-            })
+            ->when(!empty($deptIds), fn ($q) => $q->whereHas('departments', fn ($d) => $d->whereIn('departments.id', $deptIds)))
             ->when($actor, fn ($q) => $q->where('id', '!=', $actor->getKey()))
             ->pluck('email')
             ->filter(fn ($email) => filter_var($email, FILTER_VALIDATE_EMAIL))
@@ -717,9 +561,6 @@ class EditRecruitmentPhase extends EditRecord
         return true;
     }
 
-    /**
-     * Normalisasi value untuk perbandingan agar 1 vs "1" tidak dianggap beda.
-     */
     protected function normalizeForDiff($v)
     {
         if (is_null($v)) return null;
@@ -729,16 +570,10 @@ class EditRecruitmentPhase extends EditRecord
         return json_encode($v);
     }
 
-    /**
-     * Buat daftar perubahan (diff) antara $before dan $after.
-     * - Abaikan key pada $this->diffExcludeKeys
-     * - Tangkap perubahan top-level form_data dan tiap phases[i].*
-     */
     protected function diffFormData(array $before, array $after): array
     {
         $changes = [];
 
-        // Top-level (selain phases)
         $keys = array_unique(array_merge(array_keys($before), array_keys($after)));
         foreach ($keys as $k) {
             if ($k === 'phases') continue;
@@ -759,7 +594,6 @@ class EditRecruitmentPhase extends EditRecord
             }
         }
 
-        // Per-phase
         $bp = $before['phases'] ?? [];
         $ap = $after['phases'] ?? [];
         $max = max(count($bp), count($ap));
@@ -795,13 +629,12 @@ class EditRecruitmentPhase extends EditRecord
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         $record->refresh();
-
-        // Snapshot sebelum perubahan
         $before = $record->form_data ?? [];
 
         $db    = $record->form_data ?? [];
         $input = $data['form_data'] ?? [];
 
+        // commit reviseNotes tertunda (jika ada)
         if ($this->pendingIndex !== null && $this->pendingNewStatus !== null) {
             $idx    = $this->pendingIndex;
             $reason = trim((string) ($input['phases'][$idx]['reviseNotes'] ?? ''));
@@ -816,6 +649,7 @@ class EditRecruitmentPhase extends EditRecord
             }
         }
 
+        // merge data per-fase selain status & reviseNotes (status diatur rules)
         if (isset($input['phases']) && is_array($input['phases'])) {
             $db['phases'] = $db['phases'] ?? [];
 
@@ -828,6 +662,8 @@ class EditRecruitmentPhase extends EditRecord
 
                 foreach ($phaseInput as $k => $v) {
                     if (in_array($k, ['status', 'reviseNotes'], true)) continue;
+                    // normalisasi typo 'finisihed' → 'finished'
+                    if ($k === 'finisihed') $k = 'finished';
                     $db['phases'][$i][$k] = $v;
                 }
             }
@@ -840,7 +676,6 @@ class EditRecruitmentPhase extends EditRecord
 
         $db['phases'] = $this->sanitizePhases($db['phases'] ?? []);
 
-        // === DIFF & SAVE ===
         $this->latestChanges = $this->diffFormData($before, $db);
 
         $record->form_data = $db;
@@ -861,7 +696,6 @@ class EditRecruitmentPhase extends EditRecord
         $actor = auth()->user();
         $recipients = self::getRecipients($actor);
 
-        // gabungkan reaktif + submit
         $allChanges = array_merge($this->accumulatedChanges, $this->latestChanges);
 
         $changesPayload = array_map(static function (array $c) {
@@ -886,6 +720,7 @@ class EditRecruitmentPhase extends EditRecord
             department:    $this->department,
         );
 
+        // Kirim email khusus jika ada reviseNotes
         $reviseItems = array_values(array_filter(
             $changesPayload,
             static fn ($c) => isset($c['field']) && strtolower((string)$c['field']) === 'revisenotes'
@@ -905,7 +740,6 @@ class EditRecruitmentPhase extends EditRecord
 
             if (!empty($emails)) {
                 $subject = sprintf('Perubahan Tahap Proses Perekrutan – %s', $this->department);
-
                 $message = sprintf(
                     'Kami informasikan bahwa %s telah melakukan pengunduran tahap ke "%s" pada proses perekrutan di departemen %s.',
                     $actor->name ?? 'System',

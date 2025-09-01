@@ -21,13 +21,14 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'hapi.js' => \App\Http\Middleware\VerifyHapiSignature::class,
-            'force-http' => \App\Http\Middleware\ForceHTTPS::class,
+//            'force-http' => \App\Http\Middleware\ForceHTTPS::class,
         ]);
 
 //        $middleware->trustProxies(at: '*', headers: $headers);
 
         $middleware->trustHosts([
             '^hris-admin-709127657420\.asia-southeast2\.run\.app$',
+            '^hris-admin-sg-709127657420\.asia-southeast1\.run\.app$',
             '^(.+\.)?indraangkola\.com$'
         ]);
     })

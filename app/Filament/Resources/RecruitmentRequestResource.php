@@ -11,6 +11,7 @@ use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\Alignment;
+use Filament\Support\Enums\VerticalAlignment;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -57,10 +58,16 @@ class RecruitmentRequestResource extends Resource
             ->recordUrl(null)
             ->recordAction('view_request') // ⬅️ klik baris = buka modal detail
             ->columns([
+                Tables\Columns\TextColumn::make('title')
+                    ->label('Judul')
+                    ->alignment(Alignment::Center)
+                    ->verticalAlignment(VerticalAlignment::Start)
+                    ->searchable()
+                    ->wrap(),
                 Tables\Columns\TextColumn::make('requester.name')->label('Diminta Oleh')->searchable(),
-                Tables\Columns\TextColumn::make('title')->label('Judul')->alignment(Alignment::Center)->searchable(),
                 Tables\Columns\TextColumn::make('department.name')->label('Department')->alignment(Alignment::Center)->searchable(),
-                Tables\Columns\TextColumn::make('pic.name')->label('Person In Charge')->badge()->alignment(Alignment::Center),
+                Tables\Columns\TextColumn::make('recruitment_type')->label('Jenis ')->formatStateUsing(fn($state) => (ucfirst($state)))->badge()->alignment(Alignment::Center),
+                Tables\Columns\TextColumn::make('pic.name')->label('Penanggung Jawab')->badge()->alignment(Alignment::Center),
                 Tables\Columns\TextColumn::make('recruitmentPhase')
                     ->label('Dalam Perkembangan')->badge()
                     ->getStateUsing(function ($record) {
