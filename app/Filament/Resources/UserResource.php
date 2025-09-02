@@ -22,11 +22,10 @@ class UserResource extends Resource
     protected static ?string $activeNavigationIcon = 'heroicon-s-user';
     protected static ?int $navigationSort = 5;
 
-    // === Gate via helper (tetap) ===
     public static function canAccess(): bool { return AccessHelper::canAccessHR(); }
     public static function canView(Model $record): bool { return AccessHelper::canViewHR(); }
     public static function canEdit(Model $record): bool { return AccessHelper::canEditHR(); }
-    public static function canDelete(Model $record): bool { return AccessHelper::canDeleteHR(); }
+    public static function canDelete(Model $record): bool { return false; }
     public static function canCreate(): bool { return AccessHelper::canCreateHR(); }
 
     public static function form(Form $form): Form
@@ -84,7 +83,10 @@ class UserResource extends Resource
                         ->relationship(
                             name: 'roles',
                             titleAttribute: 'name',
-                            modifyQueryUsing: fn ($query) => $query->where('guard_name', 'web')->orderBy('name')
+                            modifyQueryUsing: fn ($query) => $query
+                                ->where('guard_name', 'web')
+                                ->whereNotIn('name', ['SU', 'Super-Admin', 'Dirut'])
+                                ->orderBy('name'),
                         )
                         ->multiple()
                         ->preload()
@@ -140,9 +142,6 @@ class UserResource extends Resource
                 Tables\Actions\ViewAction::make()->hiddenLabel(),
                 Tables\Actions\EditAction::make()->hiddenLabel(),
                 Tables\Actions\DeleteAction::make()->hiddenLabel(),
-            ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
             ]);
     }
 

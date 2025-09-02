@@ -26,19 +26,19 @@ class PermissionResource extends Resource
 
     public static function canAccess(): bool
     {
-        return AccessHelper::canAccessHR();
+        return auth()->user()->isSU();
     }
     public static function canView(Model $record): bool
     {
-        return AccessHelper::canViewHR();
+        return auth()->user()->isSU();
     }
     public static function canEdit(Model $record): bool
     {
-        return AccessHelper::canEditHR();
+        return auth()->user()->isSU();
     }
     public static function canCreate(): bool
     {
-        return AccessHelper::canCreateHR();
+        return auth()->user()->isSU();
     }
 
     public static function canDelete(Model $record): bool

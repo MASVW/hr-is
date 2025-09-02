@@ -48,14 +48,13 @@ class EditRecruitmentPhase extends EditRecord
     {
         $r = $this->getRecord();
 
-        $this->department   = $r?->recruitmentRequest?->department?->name ?? null;
-        $this->departmentId = $r?->recruitmentRequest?->department?->id   ?? null;
+        $this->department     = $r?->recruitmentRequest?->department?->name ?? null;
+        $this->departmentId   = $r?->recruitmentRequest?->department?->id   ?? null;
         $this->hrDepartmentId = Department::where('name', 'HUMAN RESOURCE')->value('id');
     }
 
     public function form(Form $form): Form
     {
-        // Tambahkan 'pending' supaya mundur fase bisa dilakukan eksplisit
         $statusOption = [
             'finish'   => 'Finished',
             'progress' => 'On Progress',
@@ -64,8 +63,8 @@ class EditRecruitmentPhase extends EditRecord
 
         return $form
             ->schema([
-                TextInput::make('status') // status kolom model utama (bukan per-fase)
-                ->disabled()
+                TextInput::make('status')
+                    ->disabled()
                     ->dehydrated(false)
                     ->afterStateHydrated(fn ($component) => $component->state(fn ($state) => ucfirst((string) $state)))
                     ->required()
@@ -89,14 +88,37 @@ class EditRecruitmentPhase extends EditRecord
                     ->schema([
                         Tabs::make('Phases')
                             ->tabs(fn (Get $get) => $this->buildDynamicPhaseTabs($get, $statusOption))
+                            ->activeTab(fn () => $this->getActivePhaseIndex()) // fokus ke progress; fallback pending; lalu 0
+                            ->extraAttributes([
+                                // Auto-scroll ke tab aktif saat awal render & tiap event dipicu
+                                'x-data' => '{}',
+                                'x-init' => 'setTimeout(() => {
+                                    const active = $el.querySelector("[role=tab][aria-selected=true]");
+                                    if (active) {
+                                        const list = active.closest("[role=tablist]") ?? active.parentElement;
+                                        if (list) {
+                                            const left = active.offsetLeft - (list.clientWidth - active.clientWidth)/2;
+                                            list.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+                                        }
+                                    }
+                                }, 60)',
+                                'x-on:scroll-active-tab.window' => '
+                                    const active = $el.querySelector("[role=tab][aria-selected=true]");
+                                    if (active) {
+                                        const list = active.closest("[role=tablist]") ?? active.parentElement;
+                                        if (list) {
+                                            const left = active.offsetLeft - (list.clientWidth - active.clientWidth)/2;
+                                            list.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+                                        }
+                                    }
+                                ',
+                            ])
                             ->reactive(),
                     ]),
             ]);
     }
 
-    /**
-     * Bangun tabs fase secara dinamis dari form_data.phases
-     */
+    /** Bangun tabs fase secara dinamis */
     protected function buildDynamicPhaseTabs(Get $get, array $statusOption): array
     {
         $tabs = [];
@@ -125,29 +147,28 @@ class EditRecruitmentPhase extends EditRecord
         return $tabs;
     }
 
-    /**
-     * Tentukan field schema untuk 1 fase secara dinamis
-     */
+    /** Field per-phase */
     protected function makePhaseFields(int $index, array $phase, array $statusOption): array
     {
         $fields = [];
 
-        // --- Field STATUS (selalu ada) ---
+        // STATUS (diproses manual via onPhaseStatusChange)
         $fields[] = Select::make('status')
-            ->dehydrated(false) // status diproses via onPhaseStatusChange
+            ->dehydrated(false)
             ->live()
             ->reactive()
             ->options($statusOption)
+            ->selectablePlaceholder(false)
             ->afterStateUpdated(function (string $state, Set $set, Get $get) use ($index) {
                 $this->onPhaseStatusChange($index, $state, $get, $set);
             });
 
-        // --- Field umum ---
+        // Note
         $fields[] = Textarea::make('note')->label('Note')->columnSpanFull();
 
-        // --- Revise Notes (muncul hanya saat perlu) ---
+        // Revise Notes
         $fields[] = Textarea::make('reviseNotes')
-            ->dehydrated(true) // kita tangkap reason di handleRecordUpdate/onPhaseStatusChange
+            ->dehydrated(true)
             ->afterStateHydrated(fn ($component) => $component->state(''))
             ->label('Revise Notes')
             ->helperText('Wajib diisi saat mengubah dari Finished ke Pending / On Progress.')
@@ -162,23 +183,35 @@ class EditRecruitmentPhase extends EditRecord
                 }
             });
 
-        // --- Field lainnya dinamis dari key yang ada ---
-        // abaikan beberapa key yang tidak diedit langsung atau sudah ditangani khusus
-        $ignored = ['name', 'status', 'note', 'updatedAt', 'reviseNotes', 'form_data'];
+        // Abaikan beberapa key (termasuk alias typo 'finisihed')
+        $ignored = ['name', 'status', 'note', 'updatedAt', 'reviseNotes', 'form_data', 'finisihed'];
 
+        // Alias finished/finisihed => render SATU field 'finished'
+        $finishedKey = array_key_exists('finished', $phase)
+            ? 'finished'
+            : (array_key_exists('finisihed', $phase) ? 'finisihed' : null);
+
+        if ($finishedKey !== null) {
+            $value = $phase[$finishedKey] ?? 0;
+            $fields[] = TextInput::make('finished')
+                ->label('Finished')
+                ->numeric()
+                ->afterStateHydrated(function ($component) use ($value) {
+                    $component->state($value ?? 0);
+                })
+                ->dehydrated(true);
+        }
+
+        // Field dinamis lain
         foreach ($phase as $key => $value) {
-            if (in_array($key, $ignored, true)) {
-                continue;
-            }
+            if (in_array($key, $ignored, true)) continue;
 
-            // case khusus yang sering muncul
             if ($key === 'isApproved') {
                 $fields[] = Toggle::make($key)->label('Approved')->dehydrated(true);
                 continue;
             }
 
             if ($key === 'candidate' && is_array($value)) {
-                // kandidat array → repeater (name, position, onBoardingDate)
                 $fields[] = Repeater::make('candidate')
                     ->label('Candidate')
                     ->schema([
@@ -190,15 +223,6 @@ class EditRecruitmentPhase extends EditRecord
                     ->grid(3)
                     ->dehydrated(true)
                     ->columns(3);
-                continue;
-            }
-
-            if (in_array($key, ['finished', 'finisihed'], true)) {
-                // typo kompatibilitas: render ke 'finished', simpan tetap dibersihkan di handleRecordUpdate
-                $fields[] = TextInput::make('finished')
-                    ->label('Finished')
-                    ->numeric()
-                    ->dehydrated(true);
                 continue;
             }
 
@@ -217,7 +241,6 @@ class EditRecruitmentPhase extends EditRecord
                 continue;
             }
 
-            // string default → text / textarea (panjang dipilih otomatis)
             if (is_string($value)) {
                 $length = mb_strlen($value);
                 if ($length > 120) {
@@ -233,7 +256,6 @@ class EditRecruitmentPhase extends EditRecord
                 continue;
             }
 
-            // fallback: tampilkan sebagai text (json)
             $fields[] = Textarea::make($key)
                 ->label($this->labelize($key))
                 ->rows(3)
@@ -257,7 +279,6 @@ class EditRecruitmentPhase extends EditRecord
 
     protected function isNumericLike($v, string $key): bool
     {
-        // beberapa key umum yang numeric
         $knownNumeric = [
             'totalCV','approvedCV','checked','interviewed',
             'candidate','passed','agreed','offered','onboarded','hasChecked',
@@ -325,6 +346,7 @@ class EditRecruitmentPhase extends EditRecord
         $this->onPhaseStatusChange($idx, $newStatus, $get, $set);
     }
 
+    /** Ubah status phase (cascade), TANPA menyentuh updatedAt */
     protected function onPhaseStatusChange(int $index, string $newStatus, Get $get, Set $set): void
     {
         $record = $this->getRecord()->refresh();
@@ -339,6 +361,7 @@ class EditRecruitmentPhase extends EditRecord
         $oldStatus = $dbPhases[$index]['status'] ?? null;
         $phaseName = $dbPhases[$index]['name'] ?? ('Phase #'.($index + 1));
 
+        // Wajib revise notes jika dari finish -> pending/progress
         if ($this->requiresReviseNotes($oldStatus, $newStatus)) {
             $this->editedIndex = $index;
 
@@ -375,15 +398,16 @@ class EditRecruitmentPhase extends EditRecord
             $this->pendingNewStatus = null;
         }
 
+        // Cascade status seperti semula
         $phases = $this->applyRules($dbPhases, $index, $newStatus);
 
-        // diff reaktif
+        // diff reaktif (untuk notifikasi UI)
         $after = $before;
         $after['phases'] = $this->sanitizePhases($phases);
         $diff = $this->diffFormData($before, $after);
         $this->accumulatedChanges = array_merge($this->accumulatedChanges, $diff);
 
-        // set state mini (agar badge/indikator berubah langsung)
+        // update badge/status di UI
         $phases = $this->sanitizePhases($phases);
         foreach ($phases as $i => $p) {
             if (array_key_exists('status', $p)) {
@@ -391,8 +415,14 @@ class EditRecruitmentPhase extends EditRecord
             }
         }
 
-        // simpan
+        // simpan perubahan status (TANPA updatedAt)
         $this->savePhases($phases);
+
+        // sesuaikan status global berdasar fase "Closed"
+        $this->syncGlobalStatusFromClosedPhase($this->getRecord(), $phases);
+
+        // auto-scroll bar tabs ke tab aktif
+        $this->dispatch('scroll-active-tab');
 
         // notify
         $statusChanged = $this->phasesStatusChanged($dbPhases, $phases);
@@ -478,6 +508,7 @@ class EditRecruitmentPhase extends EditRecord
         return $phases;
     }
 
+    /** Cascade rules seperti semula */
     protected function applyRules(array $phases, int $index, string $newStatus): array
     {
         $total = count($phases);
@@ -517,11 +548,9 @@ class EditRecruitmentPhase extends EditRecord
             }
 
             $prev = max(0, $index - 1);
-
             for ($i = 0; $i < $prev; $i++) {
                 $phases[$i]['status'] = 'finish';
             }
-
             $phases[$prev]['status'] = 'progress';
 
             return $phases;
@@ -626,6 +655,7 @@ class EditRecruitmentPhase extends EditRecord
         return $changes;
     }
 
+    /** SUBMIT: updateAt hanya untuk phase yang field-nya berubah (non-status) */
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         $record->refresh();
@@ -634,7 +664,7 @@ class EditRecruitmentPhase extends EditRecord
         $db    = $record->form_data ?? [];
         $input = $data['form_data'] ?? [];
 
-        // commit reviseNotes tertunda (jika ada)
+        // Commit reviseNotes tertunda (jika ada) → TIDAK memicu updatedAt
         if ($this->pendingIndex !== null && $this->pendingNewStatus !== null) {
             $idx    = $this->pendingIndex;
             $reason = trim((string) ($input['phases'][$idx]['reviseNotes'] ?? ''));
@@ -649,7 +679,8 @@ class EditRecruitmentPhase extends EditRecord
             }
         }
 
-        // merge data per-fase selain status & reviseNotes (status diatur rules)
+        // Merge input per-phase (kecuali status & reviseNotes)
+        $changedIndices = [];
         if (isset($input['phases']) && is_array($input['phases'])) {
             $db['phases'] = $db['phases'] ?? [];
 
@@ -660,11 +691,35 @@ class EditRecruitmentPhase extends EditRecord
                     unset($phaseInput['form_data']);
                 }
 
+                $changed = false;
                 foreach ($phaseInput as $k => $v) {
-                    if (in_array($k, ['status', 'reviseNotes'], true)) continue;
-                    // normalisasi typo 'finisihed' → 'finished'
-                    if ($k === 'finisihed') $k = 'finished';
-                    $db['phases'][$i][$k] = $v;
+                    if (in_array($k, ['status', 'reviseNotes'], true)) continue; // tidak trigger updatedAt
+                    if ($k === 'finisihed') $k = 'finished'; // normalisasi typo
+
+                    $old = $db['phases'][$i][$k] ?? null;
+
+                    $isDiff = is_array($old) || is_array($v)
+                        ? json_encode($old) !== json_encode($v)
+                        : $this->normalizeForDiff($old) !== $this->normalizeForDiff($v);
+
+                    if ($isDiff) {
+                        $changed = true;
+                        $db['phases'][$i][$k] = $v;
+
+                        // cleanup typo
+                        if ($k === 'finished' && isset($db['phases'][$i]['finisihed'])) {
+                            unset($db['phases'][$i]['finisihed']);
+                        }
+                    }
+                }
+
+                if ($changed) {
+                    $changedIndices[] = (int) $i; // hanya index yang field-nya berubah
+                }
+
+                // cleanup sisa typo
+                if (isset($db['phases'][$i]['finisihed'])) {
+                    unset($db['phases'][$i]['finisihed']);
                 }
             }
         }
@@ -676,10 +731,25 @@ class EditRecruitmentPhase extends EditRecord
 
         $db['phases'] = $this->sanitizePhases($db['phases'] ?? []);
 
+        // KUNCI: set updatedAt HANYA utk phase yang field-nya berubah
+        if (!empty($changedIndices)) {
+            $now = $this->nowAtom();
+            foreach (array_unique($changedIndices) as $idx) {
+                if (isset($db['phases'][$idx])) {
+                    $db['phases'][$idx]['updatedAt'] = $now;
+                }
+            }
+        }
+
+        // Diff (setelah updatedAt diset) untuk notifikasi
         $this->latestChanges = $this->diffFormData($before, $db);
 
+        // Simpan
         $record->form_data = $db;
         $record->save();
+
+        // Sinkronkan status global berdasar fase "Closed"
+        $this->syncGlobalStatusFromClosedPhase($record, $db['phases'] ?? []);
 
         return $record;
     }
@@ -720,7 +790,7 @@ class EditRecruitmentPhase extends EditRecord
             department:    $this->department,
         );
 
-        // Kirim email khusus jika ada reviseNotes
+        // Email jika ada reviseNotes
         $reviseItems = array_values(array_filter(
             $changesPayload,
             static fn ($c) => isset($c['field']) && strtolower((string)$c['field']) === 'revisenotes'
@@ -762,9 +832,12 @@ class EditRecruitmentPhase extends EditRecord
             }
         }
 
-        // reset buffer
+        // reset buffer perubahan
         $this->accumulatedChanges = [];
         $this->latestChanges = [];
+
+        // pastikan bar tab mengikuti tab aktif setelah save
+        $this->dispatch('scroll-active-tab');
 
         $this->fillForm();
     }
@@ -772,5 +845,58 @@ class EditRecruitmentPhase extends EditRecord
     protected function getHeaderActions(): array
     {
         return [];
+    }
+
+    // =========================
+    // Helpers tambahan
+    // =========================
+
+    protected function nowAtom(): string
+    {
+        $tz = config('app.timezone', 'Asia/Jakarta');
+        return now($tz)->toAtomString();
+    }
+
+    protected function lastPhaseIsFinished(array $phases): bool
+    {
+        if (empty($phases)) return false;
+        $last = $phases[array_key_last($phases)] ?? [];
+        return ($last['status'] ?? null) === 'finish';
+    }
+
+    /**
+     * Sinkronkan status global model & request induk berdasar fase "Closed" (phase terakhir):
+     * - Jika Closed 'finish'  => set keduanya 'finish'
+     * - Jika Closed tidak 'finish' => set keduanya 'progress'
+     */
+    protected function syncGlobalStatusFromClosedPhase(Model $record, array $phases): void
+    {
+        $phaseStatus = $this->lastPhaseIsFinished($phases) ? 'finish' : 'progress';
+
+        DB::transaction(function () use ($record, $phaseStatus) {
+            $record->forceFill(['status' => $phaseStatus])->save();
+
+            if ($record->recruitmentRequest) {
+                $record->recruitmentRequest->forceFill(['status' => $phaseStatus])->save();
+            }
+        });
+    }
+
+    /**
+     * Pilih index tab:
+     * 1) pertama yang 'progress'
+     * 2) jika tidak ada, pertama yang 'pending'
+     * 3) jika tetap tidak ada, 0
+     */
+    protected function getActivePhaseIndex(): int
+    {
+        $phases = (array) ($this->getRecord()?->form_data['phases'] ?? []);
+        foreach ($phases as $i => $p) {
+            if (($p['status'] ?? null) === 'progress') return $i+1;
+        }
+        foreach ($phases as $i => $p) {
+            if (($p['status'] ?? null) === 'pending') return $i;
+        }
+        return 0;
     }
 }
