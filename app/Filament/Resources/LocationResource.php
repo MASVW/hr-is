@@ -83,11 +83,6 @@ class LocationResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make()
                     ->hiddenLabel(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
             ]);
     }
 
