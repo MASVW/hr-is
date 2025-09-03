@@ -70,7 +70,15 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
             ->whereRaw('UPPER(TRIM(name)) = ?', ['DIRECTOR'])
             ->exists();
 
-        return $isHrDepartment || $hasDirectorRole;
+        $hasSU = $this->roles()
+            ->whereRaw('UPPER(TRIM(name)) = ?', ['SU'])
+            ->exists();
+
+        $hasSUs = $this->roles()
+            ->whereRaw('UPPER(TRIM(name)) = ?', ['Super-Admin'])
+            ->exists();
+
+        return $isHrDepartment || $hasDirectorRole || $hasSU || $hasSUs;
     }
     public function isTeamLeader(): bool
     {

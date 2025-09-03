@@ -91,6 +91,9 @@ class AccessHelper
 
     public static function canAccessOnlyStakeHolder(): bool
     {
+        if (auth()->user()?->isSU()) {
+            return true;
+        }
         return auth()->check()
             && (
                 auth()->user()->isDirector()
