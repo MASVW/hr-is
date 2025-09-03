@@ -6,6 +6,7 @@ use App\Mail\ApprovalMail;
 use App\Mail\NotificationMail;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use InvalidArgumentException;
@@ -73,12 +74,18 @@ class Emailer
         $approveUrl = self::generateApprovalUrl($routeApprove, $derivedRecruitmentId, $derivedUserId, $expiresIn);
         $rejectUrl  = self::generateApprovalUrl($routeReject,  $derivedRecruitmentId, $derivedUserId, $expiresIn);
 
+        $expiresAt = $expiresIn
+            ? Carbon::now('Asia/Jakarta')->addMinutes($expiresIn)->format('d M Y H:i') . ' WIB'
+            : null;
+
         Mail::to($approver)->queue(new ApprovalMail(
             subjectLine: $subject,
             greeting: __('emails.greeting', [], 'id'),
             messageLine: $message,
             approveUrl:  $approveUrl,
             rejectUrl:   $rejectUrl,
+            context:     $context,
+            expiresAt:   $expiresAt
         ));
     }
 
