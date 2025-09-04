@@ -25,14 +25,24 @@ class DepartmentSeeder extends Seeder
             "HUMAS & LEGAL",
             "IT",
             "LUBRICANT",
-            "MARKETING",
+            "BBM",
+            "MARKETING WILAYAH 1",
+            "MARKETING WILAYAH 2",
+            "MARKETING WILAYAH 3",
+            "MARKETING ",
             "PLANTATION",
             "PROCUREMENT",
-            "RETAIL",
+            "RETAIL & SPBU",
             "SHIPPING",
             "SPBD",
             "TOP",
             "TRANSPORT",
+            "ADMIN OPERASIONAL",
+            "OPERASIONAL",
+            "ADMIN MARKETING",
+            "VHS",
+            "HSE",
+            "KOMERSIAL"
         ];
 
         foreach ($departmentData as $name) {
