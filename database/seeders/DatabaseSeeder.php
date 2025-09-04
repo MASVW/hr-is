@@ -176,9 +176,9 @@ class DatabaseSeeder extends Seeder
         $accounts = [
             ['name' => 'Mustika Lautan', 'jabatan' => 'Direktur Utama',                 'departments' => 'Audit, IT, Legal, SPBD',                                   'email' => 'mustika@indraangkola.com',  'password' => 'Mustika123'],
             ['name' => 'Meriawati',       'jabatan' => 'Direktur Administrasi & Umum',  'departments' => 'HRGA, HRD, Admin Operasional, Admin Marketing, Procurement',     'email' => 'meri@indraangkola.com',      'password' => 'Meri123'],
-            ['name' => 'Hartono',         'jabatan' => 'Direktur Komersial',            'departments' => 'BBM, Lubricant',                                          'email' => 'hartono@indraangkola.com',   'password' => 'Hartono123'],
-            ['name' => 'Handry Yunus',    'jabatan' => 'Direktur Accounting',           'departments' => 'Accounting',                                              'email' => 'handry@indraangkola.com',    'password' => 'Handry123'],
-            ['name' => 'Wuryanto',        'jabatan' => 'Direktur Operasional',          'departments' => 'Transport, Shipping, VHS, HSE, Plantation, Retail & SPBU','email' => 'wuryanto@indraangkola.com',  'password' => 'Wuryanto123'],
+            ['name' => 'Hartono',         'jabatan' => 'Direktur Komersial',  'departments' => 'BBM, Lubricant',                                          'email' => 'hartono@indraangkola.com',   'password' => 'Hartono123'],
+            ['name' => 'Handry Yunus',    'jabatan' => 'Direktur Accounting', 'departments' => 'Accounting',                                              'email' => 'handry@indraangkola.com',    'password' => 'Handry123'],
+            ['name' => 'Wuryanto',        'jabatan' => 'Direktur Operasional','departments' => 'Transport, Shipping, VHS, HSE, Plantation, Retail & SPBU','email' => 'wuryanto@indraangkola.com',  'password' => 'Wuryanto123'],
             ['name' => 'Hamdani',   'jabatan' => 'Manager Lubricant',         'departments' => '', 'email' => 'hamdani@indraangkola.com',   'password' => 'Hamdani123'],
             ['name' => 'Yonathan',  'jabatan' => 'Manager Marketing wil. 1',  'departments' => '', 'email' => 'yonathan@indraangkola.com',  'password' => 'Yonathan123'],
             ['name' => 'Hadi',      'jabatan' => 'Manager Marketing wil. 2',  'departments' => '', 'email' => 'hadi@indraangkola.com',      'password' => 'Hadi123'],
@@ -192,6 +192,8 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Widdy',     'jabatan' => 'Asmen HRD',                 'departments' => '', 'email' => 'widdy@indraangkola.com',     'password' => 'Widdy123'],
             ['name' => 'Erlis',     'jabatan' => 'Asmen Admin Marketing',     'departments' => '', 'email' => 'erlis@indraangkola.com',     'password' => 'Erlis123'],
             ['name' => 'Olib',      'jabatan' => 'Asmen IT',                  'departments' => '', 'email' => 'it@indraangkola.com',        'password' => 'Luciefer210'],
+            ['name' => 'Enty',      'jabatan' => 'SPV PROCUREMENT',           'departments' => '', 'email' => 'enty@indraangkola.com',        'password' => 'IAGproc210'],
+            ['name' => 'Ibnu',      'jabatan' => 'SPV ACCOUNTING',            'departments' => '', 'email' => 'ibnu@indraangkola.com',        'password' => 'IAGaccjkt210'],
         ];
 
         /** ===== Create/Update users + roles + departments ===== */
