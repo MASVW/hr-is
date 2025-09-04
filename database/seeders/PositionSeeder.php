@@ -206,6 +206,7 @@ class PositionSeeder extends Seeder
             'SUPIR',
             'SUPIR (Transport)',
             'SUPIR LUB',
+            'SUPIR L200',
         ];
 
         foreach ($positions as $name) {

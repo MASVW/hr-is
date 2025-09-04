@@ -194,6 +194,8 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Olib',      'jabatan' => 'Asmen IT',                  'departments' => '', 'email' => 'it@indraangkola.com',        'password' => 'Luciefer210'],
             ['name' => 'Enty',      'jabatan' => 'SPV PROCUREMENT',           'departments' => '', 'email' => 'enty@indraangkola.com',        'password' => 'IAGproc210'],
             ['name' => 'Ibnu',      'jabatan' => 'SPV ACCOUNTING',            'departments' => '', 'email' => 'ibnu@indraangkola.com',        'password' => 'IAGaccjkt210'],
+            ['name' => 'Akhmad Kurniawan',      'jabatan' => 'SPV TRANSPORT',            'departments' => '', 'email' => 'kurniawan@indraangkola.com',        'password' => 'IAGtrans210'],
+            ['name' => 'Lin Idham',      'jabatan' => 'Manager PLANTATION',            'departments' => '', 'email' => 'linidham@indraangkola.com',        'password' => 'Linidham123'],
 
             //STAFF HRD
             ['name' => 'Sherlin',      'jabatan' => 'STAFF HRD',            'departments' => '', 'email' => 'hrd-recruitment@indraangkola.com',        'password' => 'IAGhuman210'],
