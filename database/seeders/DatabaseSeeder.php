@@ -189,10 +189,10 @@ class DatabaseSeeder extends Seeder
         };
 
         // Data dummy untuk beberapa departemen
-//        $makeSamples($departmentIT,  $admin->id, 10);
+        $makeSamples($departmentIT,  $admin->id, 2);
 //        $makeSamples($departmentHR,  $admin->id, 10);
-        $makeSamples($departmentAcc, $admin->id, 10);
-        $makeSamples($departmentProc,$admin->id, 10);
+//        $makeSamples($departmentAcc, $admin->id, 10);
+//        $makeSamples($departmentProc,$admin->id, 10);
 
 
         $mrMustika = User::create([
@@ -215,76 +215,76 @@ class DatabaseSeeder extends Seeder
 //        $msMeriawati->departments()->syncWithoutDetaching([$departmentHR->id]);
 //        $msMeriawati->assignRole('Director');
 
-        for ($i = 0; $i < 10; $i++) {
-            $approval = Approval::factory()->create();
-
-            $request = RecruitmentRequest::factory()->create([
-                'department_id' => $departmentIT->id,
-                'requested_by'  => $admin->id,
-                'approval_id'   => $approval->id,
-            ]);
-
-            $approval->update(['request_id' => $request->id]);
-
-            $phase = RecruitmentPhase::factory()->create([
-                'request_id' => $request->id,
-            ]);
-
-            $request->update(['phase_id' => $phase->id]);
-        }
-
-        for ($i = 0; $i < 10; $i++) {
-            $approval = Approval::factory()->create();
-
-            $request = RecruitmentRequest::factory()->create([
-                'department_id' => $departmentHR->id,
-                'requested_by'  => $admin->id,
-                'approval_id'   => $approval->id,
-            ]);
-
-            $approval->update(['request_id' => $request->id]);
-
-            $phase = RecruitmentPhase::factory()->create([
-                'request_id' => $request->id,
-            ]);
-
-            $request->update(['phase_id' => $phase->id]);
-        }
-
-        for ($i = 0; $i < 10; $i++) {
-            $approval = Approval::factory()->create();
-
-            $request = RecruitmentRequest::factory()->create([
-                'department_id' => $departmentAcc->id,
-                'requested_by'  => $admin->id,
-                'approval_id'   => $approval->id,
-            ]);
-
-            $approval->update(['request_id' => $request->id]);
-
-            $phase = RecruitmentPhase::factory()->create([
-                'request_id' => $request->id,
-            ]);
-
-            $request->update(['phase_id' => $phase->id]);
-        }
-
-        for ($i = 0; $i < 10; $i++) {
-            $approval = Approval::factory()->create();
-
-            $request = RecruitmentRequest::factory()->create([
-                'department_id' => $departmentProc->id,
-                'requested_by'  => $admin->id,
-                'approval_id'   => $approval->id,
-            ]);
-
-            $approval->update(['request_id' => $request->id]);
-
-            $phase = RecruitmentPhase::factory()->create([
-                'request_id' => $request->id,
-            ]);
-
-            $request->update(['phase_id' => $phase->id]);
-        }
+//        for ($i = 0; $i < 10; $i++) {
+//            $approval = Approval::factory()->create();
+//
+//            $request = RecruitmentRequest::factory()->create([
+//                'department_id' => $departmentIT->id,
+//                'requested_by'  => $admin->id,
+//                'approval_id'   => $approval->id,
+//            ]);
+//
+//            $approval->update(['request_id' => $request->id]);
+//
+//            $phase = RecruitmentPhase::factory()->create([
+//                'request_id' => $request->id,
+//            ]);
+//
+//            $request->update(['phase_id' => $phase->id]);
+//        }
+//
+//        for ($i = 0; $i < 10; $i++) {
+//            $approval = Approval::factory()->create();
+//
+//            $request = RecruitmentRequest::factory()->create([
+//                'department_id' => $departmentHR->id,
+//                'requested_by'  => $admin->id,
+//                'approval_id'   => $approval->id,
+//            ]);
+//
+//            $approval->update(['request_id' => $request->id]);
+//
+//            $phase = RecruitmentPhase::factory()->create([
+//                'request_id' => $request->id,
+//            ]);
+//
+//            $request->update(['phase_id' => $phase->id]);
+//        }
+//
+//        for ($i = 0; $i < 10; $i++) {
+//            $approval = Approval::factory()->create();
+//
+//            $request = RecruitmentRequest::factory()->create([
+//                'department_id' => $departmentAcc->id,
+//                'requested_by'  => $admin->id,
+//                'approval_id'   => $approval->id,
+//            ]);
+//
+//            $approval->update(['request_id' => $request->id]);
+//
+//            $phase = RecruitmentPhase::factory()->create([
+//                'request_id' => $request->id,
+//            ]);
+//
+//            $request->update(['phase_id' => $phase->id]);
+//        }
+//
+//        for ($i = 0; $i < 10; $i++) {
+//            $approval = Approval::factory()->create();
+//
+//            $request = RecruitmentRequest::factory()->create([
+//                'department_id' => $departmentProc->id,
+//                'requested_by'  => $admin->id,
+//                'approval_id'   => $approval->id,
+//            ]);
+//
+//            $approval->update(['request_id' => $request->id]);
+//
+//            $phase = RecruitmentPhase::factory()->create([
+//                'request_id' => $request->id,
+//            ]);
+//
+//            $request->update(['phase_id' => $phase->id]);
+//        }
     }
 }

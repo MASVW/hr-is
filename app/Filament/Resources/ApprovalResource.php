@@ -88,12 +88,15 @@ class ApprovalResource extends Resource
                 Action::make('directorDecision')
                     ->label('Keputusan Direktur')
                     ->icon('heroicon-o-check-circle')
-                    ->visible(fn(Approval $record) => (
-                        is_null($record->director_approval)
+                    ->visible(function (Approval $record) {
+                        if (auth()->user()->isSU()){
+                            return true;
+                        };
+                        return is_null($record->director_approval)
                         && auth()->check()
                         && auth()->user()->isDirector()
-                        && auth()->user()->departments()->where('departments.id', $record->request->department->id)->exists()
-                    ))
+                        && auth()->user()->departments()->where('departments.id', $record->request->department->id)->exists();
+                    })
                     ->modalHeading('Tentukan Keputusan Direktur')
                     ->modalSubmitActionLabel('Simpan')
                     ->form([
@@ -179,12 +182,15 @@ class ApprovalResource extends Resource
                 Action::make('managerDecision')
                     ->label('Keputusan Manager HR')
                     ->icon('heroicon-o-check-circle')
-                    ->visible(fn(Approval $record) => (
-                        is_null($record->hrd_approval) && (
-                            (auth()->user()->isManager() || auth()->user()->isDirector())
-                            && auth()->user()->isHrDept()
-                        )
-                    ))
+                    ->visible(function (Approval $record) {
+                        if (auth()->user()->isSU()){
+                            return true;
+                        };
+                        return is_null($record->director_approval)
+                            && auth()->check()
+                            && auth()->user()->isDirector()
+                            && auth()->user()->departments()->where('departments.id', $record->request->department->id)->exists();
+                    })
                     ->modalHeading('Tentukan Keputusan Manager')
                     ->modalSubmitActionLabel('Simpan')
                     ->form([
