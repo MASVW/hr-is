@@ -182,7 +182,7 @@ class DatabaseSeeder extends Seeder
 
                 $phase = RecruitmentPhase::factory()->create([
                     'request_id' => $request->id,
-                ]);
+                ]);~
 
                 $request->update(['phase_id' => $phase->id]);
             }
